@@ -110,7 +110,7 @@ public class Inventory : MonoBehaviour
 
     // ---------- 存讀檔 ----------
 
-    public void WriteTo(SaveData data)
+    public void WriteTo(NodeSnapshot data)
     {
         data.items.Clear();
         foreach (var s in slots)
@@ -118,7 +118,7 @@ public class Inventory : MonoBehaviour
         data.selectedSlot = Selected;
     }
 
-    public void ReadFrom(SaveData data)
+    public void ReadFrom(NodeSnapshot data)
     {
         Array.Clear(slots, 0, slots.Length);
         for (int i = 0; i < data.items.Count && i < slots.Length; i++)

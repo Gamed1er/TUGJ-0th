@@ -154,3 +154,4 @@ MonoBehaviour:
   solid: {fileID: 8296070238830701425}
   visual: {fileID: 6278302894706261435}
   openAlpha: 0.2
+  startOpen: 0

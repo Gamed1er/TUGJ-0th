@@ -11,6 +11,9 @@ public class PlayerRocket : MonoBehaviour
 {
     public enum RocketState { Idle, Charging, Flying }
 
+    [Tooltip("飛行時的噴射粒子 (玩家腳下、往下噴)")]
+    [SerializeField] ParticleSystem thrustFx;
+
     public RocketState State { get; private set; }
     /// <summary>藍條比例：蓄力中 = 蓄力進度；飛行中 = 剩餘時間。</summary>
     public float Fill { get; private set; }
@@ -36,6 +39,7 @@ public class PlayerRocket : MonoBehaviour
     public void Stop()
     {
         if (State == RocketState.Flying) player.SetFlying(false);
+        if (thrustFx != null) thrustFx.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         State = RocketState.Idle;
         Fill = 0f;
     }
@@ -53,6 +57,7 @@ public class PlayerRocket : MonoBehaviour
                     State = RocketState.Flying;
                     timer = config.flightDuration;
                     player.SetFlying(true, config.riseSpeed);
+                    if (thrustFx != null) thrustFx.Play();
                 }
                 break;
 

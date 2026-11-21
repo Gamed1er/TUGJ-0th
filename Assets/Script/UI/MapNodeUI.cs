@@ -1,8 +1,13 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>地圖上的一個存檔點節點。去過 = 亮色並顯示名稱；沒去過 = 灰色「???」。</summary>
-public class MapNodeUI : MonoBehaviour
+/// <summary>
+/// 地圖上的一個節點。去過 = 亮色並顯示名稱；沒去過 = 灰色「???」；目前節點 = 黃色。
+/// 可以點擊 (回溯用，由 MapUI 處理確認流程)；被選中時放大。
+/// </summary>
+public class MapNodeUI : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] Image dot;
     [SerializeField] Text label;
@@ -10,20 +15,29 @@ public class MapNodeUI : MonoBehaviour
     [SerializeField] Color discoveredColor = new Color(0.3f, 0.8f, 1f);
     [SerializeField] Color currentColor = new Color(1f, 0.85f, 0.2f);
     [SerializeField] Color disabledColor = new Color(0.25f, 0.25f, 0.25f);
+    [SerializeField] float selectedScale = 1.5f;
 
-    SavePoint savePoint;
-
+    public SavePoint SavePoint { get; private set; }
     public RectTransform RectTransform => (RectTransform)transform;
 
-    public void Bind(SavePoint sp) => savePoint = sp;
+    Action<MapNodeUI> onClick;
 
-    public void Refresh(string currentSavePointId)
+    public void Bind(SavePoint sp, Action<MapNodeUI> onClick)
     {
-        bool discovered = savePoint.Discovered;
-        label.text = discovered ? savePoint.DisplayName : "???";
-        dot.color = !savePoint.IsActive ? disabledColor
-                  : savePoint.Id == currentSavePointId ? currentColor
+        SavePoint = sp;
+        this.onClick = onClick;
+    }
+
+    public void Refresh(string currentSavePointId, bool selected)
+    {
+        bool discovered = SavePoint.Discovered;
+        label.text = discovered ? SavePoint.DisplayName : "???";
+        dot.color = !SavePoint.IsActive ? disabledColor
+                  : SavePoint.Id == currentSavePointId ? currentColor
                   : discovered ? discoveredColor
                   : undiscoveredColor;
+        transform.localScale = Vector3.one * (selected ? selectedScale : 1f);
     }
+
+    public void OnPointerClick(PointerEventData e) => onClick?.Invoke(this);
 }

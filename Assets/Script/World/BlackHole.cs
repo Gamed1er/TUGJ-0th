@@ -2,8 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// 黑洞槍射出的黑洞。場上同時只會有一顆 (BlackHole.Current)。
-/// 飛行中：直線前進 → 撞到地形/門 = 貼在表面固定；撞到 Breakable = 破壞它並消失；玩家、電池、觸發區直接穿過。
-/// 固定後：對範圍內的玩家與電池產生引力 (由它們自己呼叫 SamplePull 取得)。
+/// 飛行中：直線前進 → 撞到地形/門 = 貼在表面固定；撞到 Breakable = 破壞它周圍 breakRadius 內所有 Breakable 並消失；玩家、電池、觸發區直接穿過。
+/// 固定後：對範圍內的玩家與電池產生引力 (由它們自己呼叫 SamplePull 取得)，並播放往中心吸的粒子。
 /// </summary>
 public class BlackHole : MonoBehaviour
 {
@@ -19,6 +19,10 @@ public class BlackHole : MonoBehaviour
     [Tooltip("會讓黑洞停下的圖層 (地形、門、可破壞物件)")]
     public LayerMask hitMask;
 
+    [Header("破壞")]
+    [Tooltip("撞到可破壞方塊時，以該方塊為中心，這個距離 (格) 內的可破壞方塊全部破壞 (隔牆也會)")]
+    public float breakRadius = 2f;
+
     [Header("引力")]
     [Tooltip("作用半徑 (格)")]
     public float pullRadius = 4f;
@@ -30,6 +34,10 @@ public class BlackHole : MonoBehaviour
     [Header("外觀")]
     [Tooltip("固定後才顯示的引力範圍圈")]
     public GameObject rangeIndicator;
+    [Tooltip("固定後播放的吸入粒子 (圓形外圈往中心)。半徑與壽命會依 pullRadius 自動設定")]
+    public ParticleSystem pullFx;
+    [Tooltip("吸入粒子往中心移動的速度 (格/秒)")]
+    public float pullFxSpeed = 2.5f;
 
     public bool IsFlying { get; private set; }
 
@@ -43,6 +51,7 @@ public class BlackHole : MonoBehaviour
         Current = this;
         if (rangeIndicator != null) rangeIndicator.transform.localScale = Vector3.one * pullRadius * 2f;
         SetIndicator(false);
+        SetupPullFx();
     }
 
     void OnDestroy()
@@ -62,6 +71,7 @@ public class BlackHole : MonoBehaviour
     {
         IsFlying = false;
         SetIndicator(true);
+        if (pullFx != null) pullFx.Play();
     }
 
     /// <summary>收回 (直接消失，不退次數)。</summary>
@@ -98,7 +108,7 @@ public class BlackHole : MonoBehaviour
         var breakable = hits[best].collider.GetComponentInParent<Breakable>();
         if (breakable != null)
         {
-            breakable.Break();
+            Breakable.BreakAround(breakable.transform.position, breakRadius);
             Destroy(gameObject);
             return;
         }
@@ -106,6 +116,17 @@ public class BlackHole : MonoBehaviour
         // 貼在表面 (centroid = 圓形剛碰到時的圓心，不會陷進牆裡)
         transform.position = hits[best].centroid;
         Fix();
+    }
+
+    void SetupPullFx()
+    {
+        if (pullFx == null) return;
+        pullFx.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var shape = pullFx.shape;
+        shape.radius = pullRadius;
+        var main = pullFx.main;
+        main.startSpeed = -pullFxSpeed; // 負速度 = 從外圈往中心
+        main.startLifetime = pullRadius / Mathf.Max(pullFxSpeed, 0.01f); // 剛好在中心消失
     }
 
     void SetIndicator(bool on)
