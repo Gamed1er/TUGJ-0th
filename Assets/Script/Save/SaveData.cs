@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 一個存檔欄位的完整內容。用 JsonUtility 序列化，所以只能用 public 欄位 / List / 可序列化 class。
@@ -11,7 +12,7 @@ using System.Collections.Generic;
 [Serializable]
 public class SaveData
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
     /// <summary>存檔格式版本，由 SaveSystem.Save 寫入。不符 = 舊存檔，當作空欄位。</summary>
     public int version;
@@ -27,6 +28,12 @@ public class SaveData
 
     /// <summary>已被消耗/停用的節點 (預留給企劃的「消耗存檔」trick)：不會存檔、不能回溯。</summary>
     public List<string> disabledSavePoints = new List<string>();
+
+    /// <summary>第幾周目 (1 或 2)。一周目通關 (ClearGoal) 後變成 2，回不去 1。</summary>
+    public int loop = 1;
+
+    /// <summary>一周目通關當下，玩家生成的電池位置 (二周目「請輸入文本」用)。屬於哪個區段由位置判斷 (MapArea.Find)。</summary>
+    public List<Vector2> batteryRecords = new List<Vector2>();
 
     /// <summary>最後存檔時間，給標題畫面顯示。</summary>
     public string lastSaveTime = "";
@@ -51,6 +58,9 @@ public class NodeSnapshot
     /// <summary>物品欄內容，長度 = 格數；空格的 itemId 為空字串。</summary>
     public List<ItemSave> items = new List<ItemSave>();
     public int selectedSlot;
+
+    /// <summary>二周目：已經用過「請輸入文本」的區段 (MapArea.Id)。</summary>
+    public List<string> recallUsedAreas = new List<string>();
 }
 
 [Serializable]

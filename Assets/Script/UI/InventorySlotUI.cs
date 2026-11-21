@@ -11,7 +11,8 @@ public class InventorySlotUI : MonoBehaviour,
 {
     [SerializeField] Image icon;
     [SerializeField] Text usesText;
-    [SerializeField] Color emptyIconColor = new Color(0.4f, 0.4f, 0.4f, 0.6f);
+    [Tooltip("道具不能用 (次數歸 0、請輸入文本在這個區段用過) 時套用的黑白材質")]
+    [SerializeField] Material grayscaleMaterial;
     [SerializeField] Text keyText;
     [SerializeField] GameObject selectedFrame;
     [Tooltip("格子底色。無人機道具在場上有有電的無人機時變成 droneActiveColor")]
@@ -37,6 +38,9 @@ public class InventorySlotUI : MonoBehaviour,
 
     void Update()
     {
+        // 能不能用可能隨時間改變 (例如請輸入文本換了區段)，所以每幀更新
+        if (item != null) icon.material = item.definition.IsAvailable(item) ? null : grayscaleMaterial;
+
         if (background == null) return;
         bool droneActive = item != null && item.definition is DroneItem && Drone.Powered != null;
         background.color = droneActive ? droneActiveColor : normalBackground;
@@ -48,11 +52,11 @@ public class InventorySlotUI : MonoBehaviour,
         selectedFrame.SetActive(selected);
         bool has = item != null;
         icon.enabled = has;
-        usesText.text = has ? item.uses.ToString() : "";
+        usesText.text = has && item.definition.ShowUses ? item.uses.ToString() : "";
         if (has)
         {
             icon.sprite = item.definition.icon;
-            icon.color = item.uses > 0 ? Color.white : emptyIconColor; // 用完變灰，但道具保留
+            icon.material = item.definition.IsAvailable(item) ? null : grayscaleMaterial; // 用完變黑白，但道具保留
         }
     }
 

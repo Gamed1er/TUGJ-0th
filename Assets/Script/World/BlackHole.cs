@@ -86,26 +86,13 @@ public class BlackHole : MonoBehaviour
 
         Vector2 pos = transform.position;
         float step = speed * Time.fixedDeltaTime;
-        var filter = new ContactFilter2D { useTriggers = false };
-        filter.SetLayerMask(hitMask);
-        int count = Physics2D.CircleCast(pos, hitRadius, direction, filter, hits, step);
-
-        // 找最近的有效碰撞 (略過觸發區與電池)
-        int best = -1;
-        for (int i = 0; i < count; i++)
-        {
-            var c = hits[i].collider;
-            if (c.isTrigger || c.GetComponentInParent<Battery>() != null) continue;
-            if (best < 0 || hits[i].distance < hits[best].distance) best = i;
-        }
-
-        if (best < 0)
+        if (!CastFlight(pos, direction, step, out var hit))
         {
             transform.position = pos + direction * step;
             return;
         }
 
-        var breakable = hits[best].collider.GetComponentInParent<Breakable>();
+        var breakable = hit.collider.GetComponentInParent<Breakable>();
         if (breakable != null)
         {
             Breakable.BreakAround(breakable.transform.position, breakRadius);
@@ -114,8 +101,34 @@ public class BlackHole : MonoBehaviour
         }
 
         // 貼在表面 (centroid = 圓形剛碰到時的圓心，不會陷進牆裡)
-        transform.position = hits[best].centroid;
+        transform.position = hit.centroid;
         Fix();
+    }
+
+    /// <summary>沿 dir 投射 distance 距離，找最近的有效碰撞 (略過觸發區與電池)。飛行與瞄準提示線共用。</summary>
+    bool CastFlight(Vector2 from, Vector2 dir, float distance, out RaycastHit2D hit)
+    {
+        hit = default;
+        var filter = new ContactFilter2D { useTriggers = false };
+        filter.SetLayerMask(hitMask);
+        int count = Physics2D.CircleCast(from, hitRadius, dir, filter, hits, distance);
+        int best = -1;
+        for (int i = 0; i < count; i++)
+        {
+            var c = hits[i].collider;
+            if (c.isTrigger || c.GetComponentInParent<Battery>() != null) continue;
+            if (best < 0 || hits[i].distance < hits[best].distance) best = i;
+        }
+        if (best < 0) return false;
+        hit = hits[best];
+        return true;
+    }
+
+    /// <summary>預測從 origin 往 dir 射出後停下的位置 (瞄準提示線用，對 prefab 呼叫即可)。打不到東西 = 飛到最大距離的位置。</summary>
+    public Vector2 PredictStop(Vector2 origin, Vector2 dir)
+    {
+        float maxDistance = speed * maxFlightTime;
+        return CastFlight(origin, dir, maxDistance, out var hit) ? hit.centroid : origin + dir * maxDistance;
     }
 
     void SetupPullFx()

@@ -15,7 +15,7 @@ MonoBehaviour:
   id: rocket
   displayName: "\u706B\u7BAD\u63A8\u9032\u5668"
   description: "\u9577\u6309\u53F3\u9375\u5F80\u4E0A\u98DB\uFF0C\u653E\u958B\u6216\u85CD\u689D\u8017\u76E1\u5C31\u7D50\u675F\u3002"
-  icon: {fileID: 21300000, guid: 3b410d974ca1b274d87ccb06e18c76d2, type: 3}
+  icon: {fileID: 21300000, guid: c04ba5d47d0ef704ea898796168fef47, type: 3}
   startingUses: 3
   chargeTime: 0.15
   flightDuration: 5

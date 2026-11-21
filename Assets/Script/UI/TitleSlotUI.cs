@@ -30,7 +30,7 @@ public class TitleSlotUI : MonoBehaviour
         var data = SaveSystem.Load(slot);
         bool has = data != null;
         playLabel.text = has
-            ? $"欄位 {slot + 1}  繼續\n<size=20>{data.lastSaveTime}</size>"
+            ? $"欄位 {slot + 1}  繼續{(data.loop >= 2 ? "  (二周目)" : "")}\n<size=20>{data.lastSaveTime}</size>"
             : $"欄位 {slot + 1}  新遊戲";
         deleteButton.gameObject.SetActive(has);
         confirmingDelete = false;
