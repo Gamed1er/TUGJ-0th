@@ -5023,6 +5023,7 @@ MonoBehaviour:
   maxSlopeAngle: 50
   snapDistance: 0.3
   pullLiftThreshold: 0.5
+  knockbackTime: 0.3
   sprite: {fileID: 8199255465515980048}
 --- !u!114 &5399924198044757907
 MonoBehaviour:
@@ -5074,6 +5075,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerRocket
   thrustFx: {fileID: 7529178966309796029}
+  exhaustSize: {x: 1, y: 2}
 --- !u!114 &175543665719181974
 MonoBehaviour:
   m_ObjectHideFlags: 0

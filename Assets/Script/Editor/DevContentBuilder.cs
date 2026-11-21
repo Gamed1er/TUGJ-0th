@@ -237,6 +237,31 @@ public static class DevContentBuilder
         var p = new Prefabs();
         int groundLayer = LayerMask.NameToLayer("Ground");
 
+        // --- 電池爆炸特效 (生成後自己播放、播完自己刪除) ---
+        var boom = MakeParticles("ExplosionFx", null, art.particle, 25);
+        {
+            var main = boom.main;
+            main.playOnAwake = true;
+            main.loop = false;
+            main.duration = 0.5f;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 7f); // 約等於爆炸半徑 2.5 格
+            main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            main.startColor = new Color(1f, 0.75f, 0.2f);
+            var emission = boom.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 50) });
+            var shape = boom.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.3f;
+            var col = boom.colorOverLifetime; col.enabled = true;
+            col.color = Fade(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.35f, 0.1f), 1f, 0f);
+            var size = boom.sizeOverLifetime; size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.4f));
+        }
+        var boomPrefab = SavePrefab(boom.gameObject, "ExplosionFx");
+
         // --- 電池 (Ground 圖層：玩家可以站上去、可以推) ---
         const string batteryMatPath = "Assets/Art/Physics/Battery.physicsMaterial2D";
         var batteryMat = AssetDatabase.LoadAssetAtPath<PhysicsMaterial2D>(batteryMatPath);
@@ -257,7 +282,7 @@ public static class DevContentBuilder
         batRb.freezeRotation = true;
         batRb.interpolation = RigidbodyInterpolation2D.Interpolate;
         batRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        battery.AddComponent<Battery>();
+        battery.AddComponent<Battery>().explosionFx = boomPrefab;
         p.battery = SavePrefab(battery, "Battery");
 
         // --- 門 (1x1，場景裡用 Scale Y 拉高) ---

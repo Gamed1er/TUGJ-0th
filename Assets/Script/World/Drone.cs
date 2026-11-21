@@ -30,7 +30,7 @@ public class Drone : MonoBehaviour
     [Header("互動")]
     [Tooltip("可以吊起電池的距離 (格)")]
     public float batteryRange = 1.2f;
-    [Tooltip("吊著的電池相對於無人機的位置")]
+    [Tooltip("吊著的電池相對於無人機的位置 (吊起時那裡被擋住，就維持電池原本的相對位置)")]
     public Vector2 carryOffset = new Vector2(0f, -0.8f);
 
     [Header("外觀 (美術可替換)")]
@@ -44,6 +44,7 @@ public class Drone : MonoBehaviour
     Collider2D col;
     MapArea area;
     Battery carried;
+    Vector2 carryLocal; // 這次吊起時實際使用的相對位置
     Vector2 lastPull;
     readonly List<Lever> nearLevers = new List<Lever>();
     readonly Collider2D[] overlap = new Collider2D[8];
@@ -124,6 +125,12 @@ public class Drone : MonoBehaviour
         Destroy(gameObject);
     }
 
+    /// <summary>擊退 (電池爆炸)。只對沒電的無人機有效 (有電的不受外力影響)。</summary>
+    public void AddKnockback(Vector2 velocity)
+    {
+        if (!IsPowered) rb.linearVelocity += velocity;
+    }
+
     public static void RemoveAll()
     {
         foreach (var d in All.ToArray()) d.Remove();
@@ -159,6 +166,8 @@ public class Drone : MonoBehaviour
         {
             carried = battery;
             carried.SetCarried(true);
+            // 正下方有空間才把電池移過去，否則維持原本的相對位置 (避免把電池塞進牆裡)
+            carryLocal = CarrySpotFree(rb.position + carryOffset) ? carryOffset : carried.Body.position - rb.position;
         }
     }
 
@@ -192,7 +201,7 @@ public class Drone : MonoBehaviour
         }
 
         rb.linearVelocity = v;
-        if (carried != null) carried.Body.MovePosition(rb.position + v * dt + carryOffset);
+        if (carried != null) carried.Body.MovePosition(rb.position + v * dt + carryLocal);
     }
 
     bool CarriedBlocked(Vector2 dir, float distance)
@@ -204,9 +213,28 @@ public class Drone : MonoBehaviour
         {
             var c = hits[i].collider;
             if (c == col || c.GetComponentInParent<Battery>() != null) continue;
+            // 已經陷進去的碰撞體不算擋路 (讓它可以往外移，才不會卡死)；只是貼著的照樣擋
+            var d = carried.Collider.Distance(c);
+            if (d.isOverlapped && d.distance < -0.02f) continue;
             return true;
         }
         return false;
+    }
+
+    /// <summary>電池放在 position 會不會跟地形 / 門 / 平台重疊。</summary>
+    bool CarrySpotFree(Vector2 position)
+    {
+        var filter = new ContactFilter2D { useTriggers = false };
+        filter.SetLayerMask(blockMask);
+        Vector2 size = (Vector2)carried.Collider.bounds.size - Vector2.one * 0.05f;
+        int n = Physics2D.OverlapBox(position, size, 0f, filter, overlap);
+        for (int i = 0; i < n; i++)
+        {
+            var c = overlap[i];
+            if (c == col || c.GetComponentInParent<Battery>() != null) continue;
+            return false;
+        }
+        return true;
     }
 
     void DepletedMove()
