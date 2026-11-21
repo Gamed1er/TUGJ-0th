@@ -38,6 +38,8 @@ public class Drone : MonoBehaviour
     [Header("墜機")]
     [Tooltip("玩家站在吊著的電池上幾秒後墜機")]
     public float crashTime = 1f;
+    [Tooltip("墜機時的火花 (自己播完自己消失)")]
+    public GameObject crashFx;
 
     [Header("外觀 (美術可替換)")]
     public SpriteRenderer visual;
@@ -106,9 +108,7 @@ public class Drone : MonoBehaviour
     {
         if (!IsPowered) return;
         Controlled = this;
-        var gm = GameManager.Instance;
-        gm.Inventory.Locked = true;
-        gm.SetCameraTarget(transform);
+        GameManager.Instance.SetCameraTarget(transform);
     }
 
     public void EndControl()
@@ -119,7 +119,6 @@ public class Drone : MonoBehaviour
         InteractPromptUI.Hide();
         var gm = GameManager.Instance;
         if (gm == null) return; // 場景卸載中
-        gm.Inventory.Locked = false;
         gm.SetCameraTarget(gm.player.transform);
     }
 
@@ -248,7 +247,11 @@ public class Drone : MonoBehaviour
         }
 
         standTimer += Time.fixedDeltaTime;
-        if (standTimer >= crashTime) Deplete(); // 放開電池、往下掉
+        if (standTimer >= crashTime)
+        {
+            if (crashFx != null) Instantiate(crashFx, transform.position, Quaternion.identity);
+            Deplete(); // 放開電池、往下掉
+        }
     }
 
     /// <summary>玩家是不是踩在吊著的電池頂面上。</summary>

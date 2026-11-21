@@ -19,3 +19,4 @@ MonoBehaviour:
   startingUses: 1
   batteryPrefab: {fileID: 3537673758686987472, guid: 847bc7952bdf6104fb494cd3628cf0ad, type: 3}
   overlapSize: {x: 0.8, y: 0.8}
+  spawnFx: {fileID: 996046671581760345, guid: 927b6c9ea3b147e43941b1656202efb0, type: 3}

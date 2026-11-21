@@ -27,7 +27,7 @@ public class Inventory : MonoBehaviour
     ItemInstance[] slots;
 
     public event Action Changed;
-    /// <summary>鎖定時不能選格、切換、拖曳交換 (操控無人機時)。</summary>
+    /// <summary>鎖定時不能選格、切換、拖曳交換。目前沒有地方使用 (操控無人機時也能切換格子)，留給之後需要時用。</summary>
     public bool Locked { get; set; }
     public int SlotCount => slots.Length;
     public int Selected { get; private set; }

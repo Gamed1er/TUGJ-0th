@@ -2,14 +2,15 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 電池倉生成的電池：1x1、有碰撞、不會旋轉，玩家走過去就能推，也能站在上面。
+/// 電池：1x1、有碰撞、不會旋轉，玩家走過去就能推 (Push，可以推上 / 下斜坡、一次推一排)，也能站在上面。
+/// 電池倉生成的 = Battery.prefab；關卡擺放的「固有電池」= FixedBattery.prefab (rocketProof、不會被記錄進二周目)。
 /// 會被固定的黑洞吸引；可以壓住壓力板。不存檔 (死亡重載就消失)。
 /// 可以被無人機吊起來 (SetCarried)：吊著時是 Kinematic、跟著無人機、不受黑洞影響。玩家可以站在吊著的電池上 (站久了無人機會墜機，見 Drone)。
 /// 跟無人機永遠不碰撞 (Drone 生成時會設定，這裡處理電池比無人機晚生成的情況)。
 ///
-/// 爆炸 (Explode)：被火箭尾氣噴到 (PlayerRocket)、被平台擠壓 (MovingPlatform) 時觸發。
+/// 爆炸 (Explode)：被火箭尾氣噴到 (PlayerRocket，rocketProof 的不會)、被平台擠壓 (MovingPlatform) 時觸發。
 /// 範圍內的玩家、沒電的無人機被往外推；範圍內的其他電池延遲 chainDelay 秒後連鎖爆炸。
-/// 不會炸死玩家、不會炸壞可破壞方塊。
+/// 範圍內的可破壞方塊 (Breakable) 被破壞 (隔牆也會)。不會炸死玩家。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 public class Battery : MonoBehaviour
@@ -25,6 +26,14 @@ public class Battery : MonoBehaviour
     public float chainDelay = 0.1f;
     [Tooltip("爆炸特效 (生成在電池位置，自己播完自己消失)")]
     public GameObject explosionFx;
+    [Tooltip("勾選 = 火箭尾氣不會引爆 (固有電池)")]
+    public bool rocketProof;
+
+    [Header("推動")]
+    [Tooltip("會擋住推動的圖層 (Ground)")]
+    public LayerMask blockMask = 1 << 8;
+    [Tooltip("能被推上去的最大坡度")]
+    [Range(0f, 89f)] public float maxSlopeAngle = 50f;
 
     bool exploded, explodeScheduled;
     readonly Collider2D[] overlap = new Collider2D[32];
@@ -33,6 +42,9 @@ public class Battery : MonoBehaviour
     Collider2D col;
     float baseGravity;
     Vector2 lastPull;
+    int pushedStep = -1;     // 最後一次被推的物理步 (Push 由玩家呼叫)
+    bool wasPushed;
+    readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
 
     public bool IsCarried { get; private set; }
     /// <summary>玩家用電池倉生成的 (一周目通關時只記錄這種，關卡原本擺的不算)。</summary>
@@ -92,6 +104,7 @@ public class Battery : MonoBehaviour
             var drone = c.GetComponentInParent<Drone>();
             if (drone != null && !drone.IsPowered && done.Add(drone)) drone.AddKnockback(Knockback(center, drone.transform.position));
         }
+        Breakable.BreakAround(center, explosionRadius);
 
         Destroy(gameObject);
     }
@@ -113,9 +126,99 @@ public class Battery : MonoBehaviour
         return dir * (maxKnockback * Mathf.Clamp01(1f - dist / explosionRadius));
     }
 
+    // ---------- 推動 ----------
+
+    int Step => Mathf.RoundToInt(Time.fixedTime / Time.fixedDeltaTime);
+
+    /// <summary>
+    /// 被往 dir (+1 / -1) 推，水平速度 = speed。沿著腳下的地面 / 前方的斜坡移動 (不受重力)，前面有電池就一起推。
+    /// 推得動回傳 true；被擋住、懸空、被吊著回傳 false (懸空時交給物理，玩家照舊能把它推下去)。
+    /// </summary>
+    public bool Push(int dir, float speed, int depth = 0)
+    {
+        if (IsCarried || exploded || depth > 8) return false;
+        if (pushedStep == Step) return true; // 這一步已經被推過 (一排電池)
+
+        if (!GroundNormal(out Vector2 ground)) return false;
+        Vector2 move = Tangent(ground, dir);
+        float dist = Mathf.Abs(speed) * Time.fixedDeltaTime + 0.02f;
+
+        // 前方：斜坡 → 改沿斜坡；電池 → 一起推；其他 → 擋住
+        if (CastFirst(move, dist, out var hit))
+        {
+            var other = hit.collider.GetComponentInParent<Battery>();
+            if (other != null)
+            {
+                if (!other.Push(dir, speed, depth + 1)) return false;
+            }
+            else if (Walkable(hit.normal))
+            {
+                move = Tangent(hit.normal, dir);
+                if (CastFirst(move, dist, out var hit2) && hit2.collider.GetComponentInParent<Battery>() == null) return false;
+            }
+            else return false;
+        }
+
+        // 水平速度跟玩家一致，坡上的垂直速度跟著坡度
+        float scale = Mathf.Abs(speed) / Mathf.Max(Mathf.Abs(move.x), 0.3f);
+        rb.gravityScale = 0f;
+        rb.linearVelocity = move * scale;
+        lastPull = Vector2.zero;
+        pushedStep = Step;
+        wasPushed = true;
+        return true;
+    }
+
+    bool Walkable(Vector2 normal) => normal.y >= Mathf.Cos(maxSlopeAngle * Mathf.Deg2Rad);
+
+    /// <summary>沿著法線為 normal 的表面、往 dir 的方向。</summary>
+    static Vector2 Tangent(Vector2 normal, int dir) => new Vector2(normal.y, -normal.x) * dir;
+
+    bool GroundNormal(out Vector2 normal)
+    {
+        normal = Vector2.up;
+        int n = Cast(Vector2.down, 0.08f);
+        for (int i = 0; i < n; i++)
+        {
+            if (!Walkable(castHits[i].normal)) continue;
+            normal = castHits[i].normal;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>往 dir 投射，回傳最近一個「迎面擋住」的東西 (貼著滑過的表面不算)。</summary>
+    bool CastFirst(Vector2 dir, float distance, out RaycastHit2D hit)
+    {
+        hit = default;
+        int n = Cast(dir, distance);
+        float best = float.MaxValue;
+        for (int i = 0; i < n; i++)
+        {
+            if (Vector2.Dot(castHits[i].normal, dir) > -0.05f) continue;
+            if (castHits[i].distance < best) { best = castHits[i].distance; hit = castHits[i]; }
+        }
+        return best < float.MaxValue;
+    }
+
+    int Cast(Vector2 dir, float distance)
+    {
+        var filter = new ContactFilter2D { useTriggers = false };
+        filter.SetLayerMask(blockMask);
+        return rb.Cast(dir, filter, castHits, distance);
+    }
+
     void FixedUpdate()
     {
         if (IsCarried) return;
+
+        // 被推中：速度由 Push 決定；剛停止推 → 停下 (避免沿坡往上飛出去)
+        if (pushedStep >= Step - 1) return;
+        if (wasPushed)
+        {
+            wasPushed = false;
+            rb.linearVelocity = Vector2.zero;
+        }
 
         Vector2 pull = BlackHole.SamplePull(rb.position, out float s);
         // 越靠近黑洞重力越小，原本的速度也被抵銷 → 會被吸過去並停在黑洞附近

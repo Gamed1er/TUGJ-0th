@@ -47,7 +47,7 @@ public class PlayerRocket : MonoBehaviour
         for (int i = 0; i < n; i++)
         {
             var battery = exhaustHits[i].GetComponentInParent<Battery>();
-            if (battery != null) battery.Explode();
+            if (battery != null && !battery.rocketProof) battery.Explode();
         }
     }
 

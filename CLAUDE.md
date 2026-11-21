@@ -9,18 +9,20 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - Commit 在 `framework` 分支，不直接 commit 到 main。
 
 ## 架構 (Assets/Script)
-- **Core**：`GameManager` 是遊戲場景的總管 (讀檔套用、存檔、死亡重載、地圖轉場 `TransitionTo`、通關 `ClearGame`)；`GameInput` 集中所有按鍵綁定，改鍵位只改這裡。
+- **Core**：`GameManager` 是遊戲場景的總管 (讀檔套用、存檔、死亡重載、R 鍵回到重生點 `RestartAtNode`、地圖轉場 `TransitionTo`、通關 `ClearGame`)；`GameInput` 集中所有按鍵綁定，改鍵位只改這裡。
 - **Items**：`ItemDefinition` (ScriptableObject) 定義道具，右鍵生命週期是 `OnUseStart` → `OnUseHold` → `OnUseEnd`，由 `PlayerItemUser` 呼叫。`Inventory` 是純資料，UI 監聽 `Changed`。
 - **Save**：`SaveData` 是一個存檔欄位的 JSON 內容，存在 PlayerPrefs，共 3 個欄位。每個節點 (`SavePoint`) 各有一份快照 (物品欄)，`currentNodeId` 是重生點。往前推進到節點才覆蓋快照，並刪掉它後面所有節點的快照 (新時間線，後面的關卡不能再回溯)；往回走只改重生點；地圖 (M) 點節點兩次可回溯。改格式要把 `SaveData.CurrentVersion` +1。
 - **二周目**：通關點 `ClearGoal` (按 E) → 一周目時記錄玩家生成的電池位置 (`Battery.SpawnedByPlayer`，吊著的也算) 到 `SaveData.batteryRecords`、`loop = 2`、清空所有節點紀錄、從 PlayerStart 重來 (回不去一周目)。二周目開局多 `GameManager.secondLoopItems` (請輸入文本 `RecallItem`)。區段 = `MapArea` (用物件名稱當 Id，不要重複)；各區段是否用過存在節點快照的 `recallUsedAreas`，死亡會恢復。殘影 = `BatteryGhosts` (掛在 GameManager 物件)。
 - **World**：節點 (隱形自動存檔)、致死區、MapArea/MapEdge (地圖分區與左右轉場)、黑洞、電池、壓力板、拉桿、門 (橫放 = 橋)、軌道平台、無人機、可破壞物件。
   - **機關**：門和軌道平台繼承 `Activatable`，拉桿 / 壓力板的 `targets` 連到它們 (壓著 = 啟動，拉桿 = 翻轉)。新機關也繼承它。
-  - **無人機**：`Drone.Powered` (有電的那台，最多一台)、`Drone.Controlled` (操控中)。操控時玩家不吃移動 / E 輸入 (`PlayerController.MoveInput`)、`Inventory.Locked`、鏡頭改跟無人機 (`GameManager.SetCameraTarget`)，右鍵退出由 `PlayerItemUser` 處理。無人機本體跟玩家、電池的碰撞用 `Physics2D.IgnoreCollision` 關掉 (`Drone.All` / `Battery.All`)；吊著的電池仍跟玩家碰撞，玩家可以站上去 (被帶著水平移動)，站滿 `crashTime` 秒 → 墜機 (`Deplete`)。外觀：`openSprite` 待機、`flyFrames` 操控中、`closeSprite` + 黑白材質 = 沒電。吊著的電池是 Kinematic，不會被物理擋住，由無人機自己做投射檢查；吊起時正下方被擋住就維持原本的相對位置 (`carryLocal`)，避免把電池塞進牆裡。
-  - **傳送槍**：`TeleportBullet` 被黑洞當加速度吸引 (`pullAcceleration`)；撞到 Ground → 傳送 (放不下就找附近最近放得下玩家的格子)、停滯 `stallTime` 秒 → 傳送到子彈位置、飛超過 5 秒消失。射出就扣次數，飛行中右鍵取消。
+  - **無人機**：`Drone.Powered` (有電的那台，最多一台)、`Drone.Controlled` (操控中)。操控時玩家不吃移動 / E 輸入 (`PlayerController.MoveInput`)、鏡頭改跟無人機 (`GameManager.SetCameraTarget`)。操控由 `PlayerItemUser` 依選中的格子決定：選中無人機格子且有 `Drone.Powered` → 操控；切到別格 → 暫停 (懸停)；操控中右鍵沒有作用。生成位置同電池 (`SpawnCell`)。無人機本體跟玩家、電池的碰撞用 `Physics2D.IgnoreCollision` 關掉 (`Drone.All` / `Battery.All`)；吊著的電池仍跟玩家碰撞，玩家可以站上去 (被帶著水平移動)，站滿 `crashTime` 秒 → 墜機 (`Deplete`)。外觀：`openSprite` 待機、`flyFrames` 操控中、`closeSprite` + 黑白材質 = 沒電。吊著的電池是 Kinematic，不會被物理擋住，由無人機自己做投射檢查；吊起時正下方被擋住就維持原本的相對位置 (`carryLocal`)，避免把電池塞進牆裡。
+  - **傳送槍**：`TeleportBullet` 被黑洞當加速度吸引 (`pullAcceleration`)；只有撞到電池才傳送 (放不下就找附近最近放得下玩家的格子)；撞到其他 Ground、停滯 `stallTime` 秒、飛超過 5 秒 → 消散 (`vanishFx`)。提示線會打到電池時變綠色 (`GetAimPath` 的 `highlight`)。射出就扣次數，飛行中右鍵取消。
+  - **推電池**：不靠物理碰撞推，`PlayerController.PushBattery` 偵測前方的電池 → `Battery.Push`：電池沿腳下地面 / 前方斜坡移動 (推動中不受重力、水平速度跟玩家一致)，前面有電池就一起推，懸空時交給物理。停止推就歸零速度。
+  - **固有電池**：`FixedBattery.prefab` (Battery 的變體，偏灰色)，直接擺在場景裡。`rocketProof` = 火箭尾氣不會引爆，其他行為跟一般電池一樣；不是 `SpawnedByPlayer`，所以不會被記錄進二周目。
   - **軌道平台**：`MovingPlatform` 自己搬動站在上面的東西和被推的東西，推不動 → 玩家死亡、電池爆炸、無人機摧毀。
-  - **電池爆炸**：`Battery.Explode` (火箭尾氣 `PlayerRocket.exhaustSize` 範圍、平台擠壓觸發)。範圍內的電池延遲 `chainDelay` 連鎖爆炸；擊退 = `maxKnockback` × (1 − 距離/半徑)。玩家用 `PlayerController.AddKnockback` (外力速度，跟黑洞拉力一起疊加、`knockbackTime` 內線性衰減、不留慣性)；沒電的無人機直接加到剛體速度 (沒有時間衰減，交給重力與摩擦)。不傷害玩家、不破壞方塊。
-- **Player**：`PlayerController` 移動跳躍；`PlayerAnimator` 直接換 sprite 播逐格動畫 (不用 Animator)，圖來自 `Assets/Art/protagnist/pro-Sheet.png` (4 格 50x40，PPU 24，pivot 離底 19px)，空中用 `jump-Sheet.png` (7 格 50x50，依垂直速度選格，pivot 也離底 19px 讓腳對齊)；`AimLine` 瞄準提示線 (問 `ItemDefinition.GetAimPath`)；`PlayerRocket` 火箭狀態與噴射粒子。
-- **特效**：Unity ParticleSystem，共用材質 `Assets/Art/Placeholder/Particle.mat` (URP 2D Sprite-Unlit + 圓形貼圖)。火箭 = Player 的 `ThrustFx`，黑洞 = BlackHole 的 `PullFx`。
+  - **電池爆炸**：`Battery.Explode` (火箭尾氣 `PlayerRocket.exhaustSize` 範圍、平台擠壓觸發)。範圍內的電池延遲 `chainDelay` 連鎖爆炸；擊退 = `maxKnockback` × (1 − 距離/半徑)。玩家用 `PlayerController.AddKnockback` (外力速度，跟黑洞拉力一起疊加、`knockbackTime` 內線性衰減、不留慣性)；沒電的無人機直接加到剛體速度 (沒有時間衰減，交給重力與摩擦)。不傷害玩家；半徑內的可破壞方塊會被破壞 (隔牆也會)。
+- **Player**：`PlayerController` 移動跳躍；`PlayerAnimator` 直接換 sprite 播逐格動畫 (不用 Animator)，圖來自 `Assets/Art/protagnist/pro-Sheet.png` (4 格 50x40，PPU 24，pivot 離底 19px)，空中用 `jump-Sheet.png` (7 格 50x50，依垂直速度選格，pivot 也離底 19px 讓腳對齊)；`AimLine` 瞄準提示線 (問 `ItemDefinition.GetAimPath`)；`SpawnPreview` 生成位置預覽 (道具實作 `ISpawnPreviewItem`：電池倉、無人機；位置規則在 `SpawnCell`：往滑鼠方向最遠 2 格、對齊格子、往玩家退找空格、不能隔牆)；`PlayerRocket` 火箭狀態與噴射粒子。
+- **特效**：Unity ParticleSystem，共用材質 `Assets/Art/Placeholder/Particle.mat` (URP 2D Sprite-Unlit + 圓形貼圖)。火箭 = Player 的 `ThrustFx`，黑洞 = BlackHole 的 `PullFx`。一次性特效放 `Assets/Prefabs/Fx/` (stopAction = Destroy，直接 Instantiate)：生成電池、傳送 / 子彈消散、落地、走路 (`PlayerAnimator.walkFxFrames`)、無人機墜機、請輸入文本、磚塊破壞 (`Breakable.breakFx`)；循環的：殘影光點、通關點閃光。傳送子彈有 TrailRenderer 拖尾。
 - **UI**：uGUI 的 legacy `Text`。
 - **黑白效果**：`Assets/Art/Shaders/Grayscale.mat` (shader `TUGJ/Grayscale`)，UI Image 和 SpriteRenderer 共用。
 - **Editor/DevContentBuilder**：產生佔位美術與測試場景，見下方。

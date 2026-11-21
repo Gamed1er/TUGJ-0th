@@ -5,6 +5,7 @@ using UnityEngine;
 /// 斜坡處理：站在地面時關掉重力，速度沿著地面方向設定 → 上下坡等速、靜止不下滑。
 /// 飛行 (火箭)：SetFlying 開啟後沒有重力，垂直速度固定。
 /// 黑洞引力：每個物理步向 BlackHole.SamplePull 取得拉力，當作「額外速度」疊加上去。
+/// 推電池：在地上往電池走 → 呼叫 Battery.Push (電池沿地面 / 斜坡移動，跟玩家同水平速度)。
 /// 擊退 (電池爆炸)：AddKnockback 加一個外力速度，同樣疊加上去，在 knockbackTime 秒內衰減到 0。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
@@ -122,6 +123,7 @@ public class PlayerController : MonoBehaviour
             Vector2 along = new Vector2(groundNormal.y, -groundNormal.x); // 沿地面往右的方向
             v = along * (x * moveSpeed) + new Vector2(pull.x, 0f); // 地上只吃水平拉力；往上夠大會在 CheckGround 離地
             lastPullY = 0f;
+            if (Mathf.Abs(x) > 0.01f) PushBattery(x > 0 ? 1 : -1, Mathf.Abs(along.x * x * moveSpeed));
         }
         else
         {
@@ -142,6 +144,19 @@ public class PlayerController : MonoBehaviour
         }
 
         rb.linearVelocity = v;
+    }
+
+    /// <summary>前方貼著電池 → 推它。</summary>
+    void PushBattery(int dir, float speed)
+    {
+        var filter = new ContactFilter2D { useTriggers = false };
+        filter.SetLayerMask(groundMask);
+        int n = col.Cast(new Vector2(dir, 0f), filter, hits, speed * Time.fixedDeltaTime + 0.05f);
+        for (int i = 0; i < n; i++)
+        {
+            var battery = hits[i].collider.GetComponentInParent<Battery>();
+            if (battery != null) { battery.Push(dir, speed); return; }
+        }
     }
 
     void CheckGround(bool wasGrounded, Vector2 pull)

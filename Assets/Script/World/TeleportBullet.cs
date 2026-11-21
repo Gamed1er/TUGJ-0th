@@ -5,9 +5,9 @@ using UnityEngine;
 /// 傳送槍射出的子彈。場上同時只會有一顆 (TeleportBullet.Current)。
 /// 飛行：朝發射方向前進，被固定的黑洞當作「加速度」吸引而拐彎 (靠近中心也會減速，可能被吸住)。
 /// 結束條件：
-/// - 撞到 hitMask (Ground：地形、電池、門、平台、可破壞物件) → 玩家傳送到撞擊點
-/// - 停滯 (stallTime 秒內移動不到 stallDistance，例如被黑洞吸住) → 玩家傳送到子彈位置
-/// - 飛超過 maxFlightTime 秒 → 直接消失
+/// - 撞到電池 (含固有電池、被吊著的) → 玩家傳送到撞擊點旁
+/// - 撞到 hitMask 的其他東西 (地形、門、平台、可破壞物件)、停滯 (stallTime 秒內移動不到 stallDistance，例如被黑洞吸住)、
+///   飛超過 maxFlightTime 秒 → 子彈消散 (vanishFx)，不傳送
 /// 傳送位置放不下玩家時，改傳送到附近最近、放得下玩家的格子 (可能因此穿牆，當成特性)。
 /// 飛行模擬 (Step) 與瞄準提示線 (Simulate) 共用，所以提示線跟實際軌跡一致。
 /// </summary>
@@ -25,7 +25,7 @@ public class TeleportBullet : MonoBehaviour
     [Tooltip("撞到就傳送的圖層 (Ground)")]
     public LayerMask hitMask;
     [Tooltip("黑洞拉力的加速度倍率 (拉力 = BlackHole.SamplePull × 這個值，單位 格/秒²)")]
-    public float pullAcceleration = 6f;
+    public float pullAcceleration = 18f;
 
     [Header("停滯")]
     [Tooltip("這段時間內移動不到 stallDistance 就算停滯")]
@@ -35,6 +35,10 @@ public class TeleportBullet : MonoBehaviour
     [Header("傳送")]
     [Tooltip("撞擊點放不下玩家時，往外找空位的最大距離 (格)")]
     public int searchRadius = 6;
+    [Tooltip("傳送特效 (出發點、到達點各播一次)")]
+    public GameObject teleportFx;
+    [Tooltip("沒打到電池、子彈消失時的特效")]
+    public GameObject vanishFx;
 
     Vector2 velocity;
     float flightTime;
@@ -69,17 +73,26 @@ public class TeleportBullet : MonoBehaviour
     {
         float dt = Time.fixedDeltaTime;
         flightTime += dt;
-        if (flightTime > maxFlightTime) { Destroy(gameObject); return; }
+        if (flightTime > maxFlightTime) { Vanish(); return; }
 
         Vector2 pos = transform.position;
         if (Step(ref pos, ref velocity, dt, out var hit))
         {
-            TeleportPlayer(hit.centroid, hit.normal);
+            if (IsBattery(hit)) TeleportPlayer(hit.centroid, hit.normal);
+            else { transform.position = hit.centroid; Vanish(); }
             return;
         }
         transform.position = pos;
 
-        if (Stalled(pos, dt, ref stallAnchor, ref stallTimer)) TeleportPlayer(pos, Vector2.zero);
+        if (Stalled(pos, dt, ref stallAnchor, ref stallTimer)) Vanish();
+    }
+
+    static bool IsBattery(RaycastHit2D hit) => hit.collider.GetComponentInParent<Battery>() != null;
+
+    void Vanish()
+    {
+        if (vanishFx != null) Instantiate(vanishFx, transform.position, Quaternion.identity);
+        Destroy(gameObject);
     }
 
     /// <summary>前進一個物理步。撞到東西回傳 true (pos 不變)。</summary>
@@ -117,8 +130,8 @@ public class TeleportBullet : MonoBehaviour
         return timer >= stallTime;
     }
 
-    /// <summary>預測軌跡 (瞄準提示線用，對 prefab 呼叫即可)。點會加進 points。</summary>
-    public void Simulate(Vector2 origin, Vector2 dir, List<Vector3> points)
+    /// <summary>預測軌跡 (瞄準提示線用，對 prefab 呼叫即可)。點會加進 points；會打到電池 (= 會傳送) 回傳 true。</summary>
+    public bool Simulate(Vector2 origin, Vector2 dir, List<Vector3> points)
     {
         float dt = Time.fixedDeltaTime;
         Vector2 pos = origin, vel = dir.normalized * speed, anchor = origin;
@@ -127,11 +140,12 @@ public class TeleportBullet : MonoBehaviour
         int steps = Mathf.CeilToInt(maxFlightTime / dt);
         for (int i = 0; i < steps; i++)
         {
-            if (Step(ref pos, ref vel, dt, out var hit)) { points.Add(hit.centroid); return; }
+            if (Step(ref pos, ref vel, dt, out var hit)) { points.Add(hit.centroid); return IsBattery(hit); }
             if (i % 2 == 0) points.Add(pos);
             if (Stalled(pos, dt, ref anchor, ref timer)) break;
         }
         points.Add(pos);
+        return false;
     }
 
     // ---------- 傳送 ----------
@@ -139,7 +153,17 @@ public class TeleportBullet : MonoBehaviour
     void TeleportPlayer(Vector2 point, Vector2 normal)
     {
         var gm = GameManager.Instance;
-        if (gm != null) gm.player.Teleport(FindSpot(gm.player, point, normal));
+        if (gm != null)
+        {
+            Vector2 from = gm.player.Body.position;
+            Vector2 to = FindSpot(gm.player, point, normal);
+            gm.player.Teleport(to);
+            if (teleportFx != null)
+            {
+                Instantiate(teleportFx, from, Quaternion.identity);
+                Instantiate(teleportFx, to, Quaternion.identity);
+            }
+        }
         Destroy(gameObject);
     }
 

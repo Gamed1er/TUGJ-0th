@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 /// </summary>
 public static class GameInput
 {
-    static InputAction move, vertical, jump, interact, use, map, scroll;
+    static InputAction move, vertical, jump, interact, use, map, scroll, restart;
     static bool initialized;
 
     /// <summary>
@@ -18,7 +18,7 @@ public static class GameInput
     static void ResetStatics()
     {
         if (initialized)
-            foreach (var a in new[] { move, vertical, jump, interact, use, map, scroll }) a?.Dispose();
+            foreach (var a in new[] { move, vertical, jump, interact, use, map, scroll, restart }) a?.Dispose();
         initialized = false;
         Locked = false;
     }
@@ -50,8 +50,9 @@ public static class GameInput
         use = new InputAction("UseItem", InputActionType.Button, "<Mouse>/rightButton");
         map = new InputAction("Map", InputActionType.Button, "<Keyboard>/m");
         scroll = new InputAction("Scroll", InputActionType.Value, "<Mouse>/scroll/y");
+        restart = new InputAction("Restart", InputActionType.Button, "<Keyboard>/r");
 
-        move.Enable(); vertical.Enable(); jump.Enable(); interact.Enable(); use.Enable(); map.Enable(); scroll.Enable();
+        move.Enable(); vertical.Enable(); jump.Enable(); interact.Enable(); use.Enable(); map.Enable(); scroll.Enable(); restart.Enable();
     }
 
     /// <summary>暫停玩家輸入 (死亡、轉場時)。UI 仍可用滑鼠操作。</summary>
@@ -64,6 +65,8 @@ public static class GameInput
     public static bool InteractPressed { get { Init(); return !Locked && interact.WasPressedThisFrame(); } }
     public static bool UsePressed { get { Init(); return !Locked && use.WasPressedThisFrame(); } }
     public static bool UseHeld { get { Init(); return !Locked && use.IsPressed(); } }
+    /// <summary>R：回到目前的重生點。</summary>
+    public static bool RestartPressed { get { Init(); return !Locked && restart.WasPressedThisFrame(); } }
     public static bool MapPressed { get { Init(); return map.WasPressedThisFrame(); } }
 
     /// <summary>滾輪：往上 = -1 (前一格)，往下 = +1 (下一格)，沒滾 = 0。</summary>
