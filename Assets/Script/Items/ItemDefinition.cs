@@ -23,6 +23,18 @@ public abstract class ItemDefinition : ScriptableObject
     public virtual void OnUseHold(ItemUseContext ctx) { }
     public virtual void OnUseEnd(ItemUseContext ctx) { }
 
+    /// <summary>物品欄要不要顯示次數。</summary>
+    public virtual bool ShowUses => true;
+
+    /// <summary>目前能不能用 (false = 物品欄圖示變黑白)。預設 = 還有次數。</summary>
+    public virtual bool IsAvailable(ItemInstance item) => item.uses > 0;
+
+    /// <summary>
+    /// 瞄準提示線 (AimLine 每幀呼叫)。要顯示就把路徑點 (世界座標) 填進 points 並回傳 true。
+    /// 預設沒有提示線。
+    /// </summary>
+    public virtual bool GetAimPath(ItemUseContext ctx, System.Collections.Generic.List<Vector3> points) => false;
+
     protected virtual void OnValidate()
     {
         if (string.IsNullOrEmpty(id)) id = name;
@@ -38,6 +50,16 @@ public struct ItemUseContext
     public ItemInstance item;
     /// <summary>滑鼠在世界中的位置 (瞄準用)。</summary>
     public Vector2 aimWorld;
+
+    /// <summary>從玩家往滑鼠的方向 (單位向量)；滑鼠剛好在玩家身上時 = 面向的方向。</summary>
+    public Vector2 AimDirection
+    {
+        get
+        {
+            Vector2 dir = aimWorld - player.Body.position;
+            return dir.sqrMagnitude < 0.0001f ? Vector2.right * player.Facing : dir.normalized;
+        }
+    }
 
     /// <summary>還有次數就回傳 true；沒有就顯示「已用完」並回傳 false。</summary>
     public bool CheckUses()

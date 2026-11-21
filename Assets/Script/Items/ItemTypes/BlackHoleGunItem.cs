@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -21,11 +22,17 @@ public class BlackHoleGunItem : ItemDefinition
         }
         if (blackHolePrefab == null || !ctx.CheckUses()) return;
 
-        Vector2 origin = ctx.player.Body.position;
-        Vector2 dir = ctx.aimWorld - origin;
-        if (dir.sqrMagnitude < 0.0001f) dir = Vector2.right * ctx.player.Facing;
-
-        Instantiate(blackHolePrefab, origin, Quaternion.identity).Launch(dir.normalized);
+        Instantiate(blackHolePrefab, ctx.player.Body.position, Quaternion.identity).Launch(ctx.AimDirection);
         ctx.Consume();
+    }
+
+    /// <summary>提示線：場上沒有黑洞 (下一次右鍵 = 發射) 時，直線畫到黑洞會停下的位置。</summary>
+    public override bool GetAimPath(ItemUseContext ctx, List<Vector3> points)
+    {
+        if (BlackHole.Current != null || blackHolePrefab == null || ctx.item.uses <= 0) return false;
+        Vector2 origin = ctx.player.Body.position;
+        points.Add(origin);
+        points.Add(blackHolePrefab.PredictStop(origin, ctx.AimDirection));
+        return true;
     }
 }
