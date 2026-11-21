@@ -13,6 +13,11 @@ public class PlayerRocket : MonoBehaviour
 
     [Tooltip("飛行時的噴射粒子 (玩家腳下、往下噴)")]
     [SerializeField] ParticleSystem thrustFx;
+    [Tooltip("尾氣判定範圍 (玩家腳底往下的長方形，寬 x 高)。飛行中碰到的電池會爆炸")]
+    [SerializeField] Vector2 exhaustSize = new Vector2(1f, 2f);
+
+    readonly Collider2D[] exhaustHits = new Collider2D[8];
+    Collider2D body;
 
     public RocketState State { get; private set; }
     /// <summary>藍條比例：蓄力中 = 蓄力進度；飛行中 = 剩餘時間。</summary>
@@ -24,7 +29,36 @@ public class PlayerRocket : MonoBehaviour
     ItemInstance item;
     float timer;
 
-    void Awake() => player = GetComponent<PlayerController>();
+    void Awake()
+    {
+        player = GetComponent<PlayerController>();
+        body = GetComponent<Collider2D>();
+    }
+
+    void FixedUpdate()
+    {
+        if (State != RocketState.Flying) return;
+
+        // 尾氣：腳底往下的長方形範圍內的電池爆炸
+        Bounds b = body.bounds;
+        var center = new Vector2(b.center.x, b.min.y - exhaustSize.y * 0.5f);
+        var filter = new ContactFilter2D { useTriggers = false };
+        int n = Physics2D.OverlapBox(center, exhaustSize, 0f, filter, exhaustHits);
+        for (int i = 0; i < n; i++)
+        {
+            var battery = exhaustHits[i].GetComponentInParent<Battery>();
+            if (battery != null) battery.Explode();
+        }
+    }
+
+    void OnDrawGizmosSelected()
+    {
+        var col = GetComponent<Collider2D>();
+        if (col == null) return;
+        Bounds b = col.bounds;
+        Gizmos.color = new Color(1f, 0.6f, 0.2f, 0.8f);
+        Gizmos.DrawWireCube(new Vector3(b.center.x, b.min.y - exhaustSize.y * 0.5f), exhaustSize);
+    }
 
     public void BeginCharge(RocketItem config, Inventory inventory, ItemInstance item)
     {

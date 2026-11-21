@@ -7,7 +7,7 @@ using UnityEngine;
 ///
 /// 每個物理步：
 /// - 站在平台上的東西 (玩家、電池、沒電的無人機) 跟著移動；被牆擋住就留在原地 (平台從腳下滑走)
-/// - 擋在移動方向前面的東西 (玩家、電池、無人機) 被推著走；推不動 → 玩家死亡、其他東西直接摧毀
+/// - 擋在移動方向前面的東西 (玩家、電池、無人機) 被推著走；推不動 → 玩家死亡、電池爆炸、無人機摧毀
 /// 黑洞不受影響 (它沒有碰撞體)。
 /// </summary>
 public class MovingPlatform : Activatable
@@ -123,6 +123,8 @@ public class MovingPlatform : Activatable
         }
         var drone = rb.GetComponentInParent<Drone>();
         if (drone != null) { drone.Remove(); return; }
+        var battery = rb.GetComponentInParent<Battery>();
+        if (battery != null) { battery.Explode(); return; }
         Object.Destroy(rb.gameObject);
     }
 

@@ -116,7 +116,13 @@ public class GameManager : MonoBehaviour
         // 往前推進 (或這個節點還沒有快照) → 覆蓋快照；往回走 → 只更新重生點
         bool forward = NodeOrder(sp.Id) > NodeOrder(data.currentNodeId) || !HasSnapshot(sp);
         data.currentNodeId = sp.Id;
-        if (forward) Inventory.WriteTo(data.GetOrCreateSnapshot(sp.Id));
+        if (forward)
+        {
+            Inventory.WriteTo(data.GetOrCreateSnapshot(sp.Id));
+            // 新的時間線：這個節點之後的紀錄全部作廢 (打通前面的關卡 → 後面關卡的紀錄被覆蓋，不能再回溯過去)
+            int order = NodeOrder(sp.Id);
+            data.snapshots.RemoveAll(s => NodeOrder(s.nodeId) > order);
+        }
         SaveSystem.Save(SaveSystem.CurrentSlot, data);
         if (forward) ToastUI.Show("已存檔");
         StateChanged?.Invoke();
@@ -125,7 +131,7 @@ public class GameManager : MonoBehaviour
     /// <summary>可以從地圖回溯到這個節點嗎 (去過、沒被停用、有快照)。</summary>
     public bool CanRewindTo(SavePoint sp) => sp.Discovered && sp.IsActive && HasSnapshot(sp);
 
-    /// <summary>回溯：重生點改成該節點 → 重載場景 (物品欄回到該節點的快照)。後面節點的快照保留。</summary>
+    /// <summary>回溯：重生點改成該節點 → 重載場景 (物品欄回到該節點的快照)。後面節點的快照先保留，等玩家往前推進到下一個節點時才作廢。</summary>
     public void RewindTo(SavePoint sp)
     {
         if (!CanRewindTo(sp) || dying || transitioning) return;
