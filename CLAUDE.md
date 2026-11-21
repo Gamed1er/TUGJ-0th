@@ -16,7 +16,7 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - **World**：節點 (隱形自動存檔)、致死區、MapArea/MapEdge (地圖分區與左右轉場)、黑洞、電池、壓力板、拉桿、門 (橫放 = 橋)、軌道平台、無人機、可破壞物件。
   - **機關**：門和軌道平台繼承 `Activatable`，拉桿 / 壓力板的 `targets` 連到它們 (壓著 = 啟動，拉桿 = 翻轉)。新機關也繼承它。
   - **無人機**：`Drone.Powered` (有電的那台，最多一台)、`Drone.Controlled` (操控中)。操控時玩家不吃移動 / E 輸入 (`PlayerController.MoveInput`)、鏡頭改跟無人機 (`GameManager.SetCameraTarget`)。操控由 `PlayerItemUser` 依選中的格子決定：選中無人機格子且有 `Drone.Powered` → 操控；切到別格 → 暫停 (懸停)；操控中右鍵沒有作用。生成位置同電池 (`SpawnCell`)。無人機本體跟玩家、電池的碰撞用 `Physics2D.IgnoreCollision` 關掉 (`Drone.All` / `Battery.All`)；吊著的電池仍跟玩家碰撞，玩家可以站上去 (被帶著水平移動)，站滿 `crashTime` 秒 → 墜機 (`Deplete`)。外觀：`openSprite` 待機、`flyFrames` 操控中、`closeSprite` + 黑白材質 = 沒電。吊著的電池是 Kinematic，不會被物理擋住，由無人機自己做投射檢查；吊起時正下方被擋住就維持原本的相對位置 (`carryLocal`)，避免把電池塞進牆裡。
-  - **傳送槍**：`TeleportBullet` 被黑洞當加速度吸引 (`pullAcceleration`)；只有撞到電池才傳送 (放不下就找附近最近放得下玩家的格子)；撞到其他 Ground、停滯 `stallTime` 秒、飛超過 5 秒 → 消散 (`vanishFx`)。提示線會打到電池時變綠色 (`GetAimPath` 的 `highlight`)。射出就扣次數，飛行中右鍵取消。
+  - **傳送槍**：`TeleportBullet` 被黑洞當加速度吸引 (`BlackHole.bulletPull`)；只有撞到電池才傳送 (放不下就找附近最近放得下玩家的格子)；撞到其他 Ground、停滯 `stallTime` 秒、飛超過 5 秒 → 消散 (`vanishFx`)。提示線會打到電池時變綠色 (`GetAimPath` 的 `highlight`)。射出就扣次數，飛行中右鍵取消。
   - **推電池**：不靠物理碰撞推，`PlayerController.PushBattery` 偵測前方的電池 → `Battery.Push`：電池沿腳下地面 / 前方斜坡移動 (推動中不受重力、水平速度跟玩家一致)，前面有電池就一起推，懸空時交給物理。停止推就歸零速度。
   - **固有電池**：`FixedBattery.prefab` (Battery 的變體，偏灰色)，直接擺在場景裡。`rocketProof` = 火箭尾氣不會引爆，其他行為跟一般電池一樣；不是 `SpawnedByPlayer`，所以不會被記錄進二周目。
   - **軌道平台**：`MovingPlatform` 自己搬動站在上面的東西和被推的東西，推不動 → 玩家死亡、電池爆炸、無人機摧毀。
@@ -35,7 +35,7 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - **圖層**：Ground (layer 8) 放地形、電池、門、平台、可破壞物件，也就是玩家能站、黑洞會貼上去的東西。無人機在 Default (黑洞會穿過)。觸發區用 layer 2 (Ignore Raycast)。
 - **static 必須自己重置**：專案關閉了 Domain Reload，static 會延續到下一次 Play。新的 static 要在 `OnDestroy` 清掉，或用 `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]` 重置，參考 `GameInput.ResetStatics`。
 - **ID**：複製節點 (SavePoint) 後，要在 Inspector 執行 Regenerate ID。
-- **黑洞拉力上限**：`maxPullSpeed` 必須小於火箭的 `riseSpeed` 和玩家的 `moveSpeed`，玩家才逃得掉。
+- **黑洞吸力**：全部在 `BlackHole.prefab` 調：`playerPull` (玩家)、`objectPull` (電池、沒電的無人機)、`bulletPull` (傳送子彈，加速度)。呼叫端用 `BlackHole.SamplePull(位置, PullTarget, out strength)`。`playerPull` 必須小於火箭的 `riseSpeed` 和玩家的 `moveSpeed`，玩家才逃得掉。
 
 ## DevContentBuilder (Tools/TUGJ/Build Test Content)
 - 會覆蓋 `Assets/Art/Placeholder`、`Assets/Prefabs`、Title/Game 場景、`pro-Sheet.png` 的切圖設定，並重新產生節點 ID，所以舊存檔會失效 (遊戲中按 F2 清除)。

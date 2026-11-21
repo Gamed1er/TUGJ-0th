@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 傳送槍射出的子彈。場上同時只會有一顆 (TeleportBullet.Current)。
-/// 飛行：朝發射方向前進，被固定的黑洞當作「加速度」吸引而拐彎 (靠近中心也會減速，可能被吸住)。
+/// 飛行：朝發射方向前進，被固定的黑洞當作「加速度」吸引而拐彎 (強度 = BlackHole.bulletPull) (靠近中心也會減速，可能被吸住)。
 /// 結束條件：
 /// - 撞到電池 (含固有電池、被吊著的) → 玩家傳送到撞擊點旁
 /// - 撞到 hitMask 的其他東西 (地形、門、平台、可破壞物件)、停滯 (stallTime 秒內移動不到 stallDistance，例如被黑洞吸住)、
@@ -24,8 +24,6 @@ public class TeleportBullet : MonoBehaviour
     public float hitRadius = 0.15f;
     [Tooltip("撞到就傳送的圖層 (Ground)")]
     public LayerMask hitMask;
-    [Tooltip("黑洞拉力的加速度倍率 (拉力 = BlackHole.SamplePull × 這個值，單位 格/秒²)")]
-    public float pullAcceleration = 18f;
 
     [Header("停滯")]
     [Tooltip("這段時間內移動不到 stallDistance 就算停滯")]
@@ -99,8 +97,8 @@ public class TeleportBullet : MonoBehaviour
     bool Step(ref Vector2 pos, ref Vector2 vel, float dt, out RaycastHit2D hit)
     {
         hit = default;
-        Vector2 pull = BlackHole.SamplePull(pos, out float s);
-        vel += pull * pullAcceleration * dt;
+        Vector2 pull = BlackHole.SamplePull(pos, BlackHole.PullTarget.Bullet, out float s); // 吸力在 BlackHole 的 bulletPull 調
+        vel += pull * dt;
         vel = Vector2.MoveTowards(vel, Vector2.zero, s * BlackHole.Damping * dt);
 
         float distance = vel.magnitude * dt;
