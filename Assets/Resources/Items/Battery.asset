@@ -18,3 +18,8 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 3f275c85205092e49b3b228416ad1495, type: 3}
   startingUses: 5
   batteryPrefab: {fileID: 3537673758686987472, guid: 847bc7952bdf6104fb494cd3628cf0ad, type: 3}
+  maxDistance: 2
+  spawnFx: {fileID: 5068573348770246588, guid: 0bf2ae4062acd814099cc52d32762324, type: 3}
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 256

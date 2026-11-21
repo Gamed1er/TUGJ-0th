@@ -10,7 +10,7 @@ using UnityEngine.Tilemaps;
 /// 遊戲場景的總管 (每個 Game 場景一個)。負責：
 /// - 進場時讀檔並套用 (玩家位置 = 目前節點、物品欄 = 目前節點的快照、節點狀態)
 /// - 自動存檔 (EnterNode)、地圖回溯 (RewindTo)
-/// - 死亡 → 淡出 → 重新載入場景 (= 回到目前節點的快照)
+/// - 死亡 → 淡出 → 重新載入場景 (= 回到目前節點的快照)；R 鍵 (RestartAtNode) 也一樣
 /// - 通關 (ClearGame)：一周目 → 記錄電池位置、清空節點紀錄、從頭開始二周目
 /// - 二周目「請輸入文本」各區段的使用紀錄 (跟物品欄一起存進節點快照)
 /// 其他腳本透過 GameManager.Instance 呼叫。
@@ -84,6 +84,19 @@ public class GameManager : MonoBehaviour
     void OnDestroy()
     {
         if (Instance == this) Instance = null;
+    }
+
+    void Update()
+    {
+        if (GameInput.RestartPressed) RestartAtNode();
+    }
+
+    /// <summary>R 鍵：立刻回到目前的重生點 (= 地圖上對目前節點讀檔；還沒到過節點就回到出生點)。</summary>
+    public void RestartAtNode()
+    {
+        if (dying || transitioning) return;
+        transitioning = true;
+        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     void ApplySaveData()

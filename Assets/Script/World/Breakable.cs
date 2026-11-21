@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 可破壞物件 (1x1)。被飛行中的黑洞撞到時，以被撞的方塊為中心、BlackHole.breakRadius 內的全部會被破壞。
-/// 放在 Ground 圖層。不存檔 (死亡重載會恢復)。要做大面牆就排很多個。
+/// 被破壞時播 breakFx。放在 Ground 圖層。不存檔 (死亡重載會恢復)。要做大面牆就排很多個。
 /// </summary>
 public class Breakable : MonoBehaviour
 {
@@ -12,9 +12,12 @@ public class Breakable : MonoBehaviour
     void OnEnable() => All.Add(this);
     void OnDisable() => All.Remove(this);
 
+    [Tooltip("被破壞時的碎片特效 (自己播完自己消失)")]
+    [SerializeField] GameObject breakFx;
+
     public void Break()
     {
-        // 之後可以在這裡加破壞特效 / 音效
+        if (breakFx != null) Instantiate(breakFx, transform.position, Quaternion.identity);
         Destroy(gameObject);
     }
 

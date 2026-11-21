@@ -14,11 +14,14 @@ public class BatteryGhosts : MonoBehaviour
     [Tooltip("選中「請輸入文本」時的顏色")]
     [SerializeField] Color highlightColor = new Color(1f, 1f, 1f, 0.6f);
     [SerializeField] int sortingOrder = 5;
+    [Tooltip("殘影上持續的微弱光點 (循環播放的粒子，殘影消失時一起關掉)")]
+    [SerializeField] GameObject ghostFx;
 
     struct Ghost
     {
         public SpriteRenderer renderer;
         public MapArea area;
+        public GameObject fx;
     }
 
     readonly List<Ghost> ghosts = new List<Ghost>();
@@ -35,7 +38,8 @@ public class BatteryGhosts : MonoBehaviour
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
             sr.sortingOrder = sortingOrder;
-            ghosts.Add(new Ghost { renderer = sr, area = MapArea.Find(p) });
+            var fx = ghostFx != null ? Instantiate(ghostFx, go.transform) : null;
+            ghosts.Add(new Ghost { renderer = sr, area = MapArea.Find(p), fx = fx });
         }
     }
 
@@ -49,6 +53,7 @@ public class BatteryGhosts : MonoBehaviour
         {
             bool show = !gm.IsRecallUsed(g.area);
             g.renderer.enabled = show;
+            if (g.fx != null && g.fx.activeSelf != show) g.fx.SetActive(show);
             if (show) g.renderer.color = highlight ? highlightColor : color;
         }
     }
