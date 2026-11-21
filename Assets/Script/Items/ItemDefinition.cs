@@ -31,9 +31,13 @@ public abstract class ItemDefinition : ScriptableObject
 
     /// <summary>
     /// 瞄準提示線 (AimLine 每幀呼叫)。要顯示就把路徑點 (世界座標) 填進 points 並回傳 true。
-    /// 預設沒有提示線。
+    /// highlight = true 時畫成綠色 (例如傳送槍會打到電池 = 可以傳送)。預設沒有提示線。
     /// </summary>
-    public virtual bool GetAimPath(ItemUseContext ctx, System.Collections.Generic.List<Vector3> points) => false;
+    public virtual bool GetAimPath(ItemUseContext ctx, System.Collections.Generic.List<Vector3> points, out bool highlight)
+    {
+        highlight = false;
+        return false;
+    }
 
     protected virtual void OnValidate()
     {

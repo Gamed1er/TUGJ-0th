@@ -6,7 +6,8 @@ using UnityEngine.EventSystems;
 /// 右鍵的生命週期：按下 → OnUseStart；按住 → OnUseHold；放開 / 選中的道具換了 / 輸入被鎖 → OnUseEnd。
 /// 特例：黑洞飛行中時，右鍵一律是「固定黑洞」，不管選哪一格。
 /// 滑鼠在 UI 上 (例如正在拖曳物品欄) 時右鍵不會使用道具。
-/// 操控無人機時：物品欄鎖定，右鍵 = 退出操控。
+/// 無人機：選中無人機格子且場上有有電的無人機 → 自動操控；切到別格 → 暫停操控 (無人機懸停)。
+/// 操控中右鍵沒有作用 (不能在無人機格子上停止操控)，但可以切換格子。
 /// </summary>
 [RequireComponent(typeof(Inventory), typeof(PlayerController))]
 public class PlayerItemUser : MonoBehaviour
@@ -23,15 +24,19 @@ public class PlayerItemUser : MonoBehaviour
 
     void Update()
     {
-        if (Drone.Controlled != null)
-        {
-            if (GameInput.UsePressed && !IsPointerOverUI()) Drone.Controlled.EndControl();
-            return;
-        }
-
         int key = GameInput.SlotKeyPressed;
         if (key >= 0) inventory.Select(key);
         inventory.Cycle(GameInput.ScrollStep);
+
+        // 無人機：選中無人機格子 = 操控有電的那台；切到別格 = 暫停
+        bool droneSelected = inventory.SelectedItem != null && inventory.SelectedItem.definition is DroneItem;
+        if (Drone.Controlled != null && !droneSelected) Drone.Controlled.EndControl();
+        else if (Drone.Controlled == null && droneSelected && Drone.Powered != null && !GameInput.Locked) Drone.Powered.BeginControl();
+        if (Drone.Controlled != null)
+        {
+            if (held != null) EndHold();
+            return; // 操控中右鍵沒有作用
+        }
 
         // 選中的道具換了 (切格、拖曳) 或放開右鍵 → 結束上一次的使用
         if (held != null && (held != inventory.SelectedItem || !GameInput.UseHeld)) EndHold();

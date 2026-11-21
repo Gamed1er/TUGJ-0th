@@ -5,6 +5,7 @@ using UnityEngine;
 /// - 在地上移動 → 依序播 walkFrames，每格 frameTime 秒；站著不動 → idleFrame
 /// - 離地 (跳躍、掉落、火箭飛行) → 依垂直速度從 jumpFrames 選一格：
 ///   速度 ≥ +jumpSpeedRange = 第一格 (剛起跳)，≤ -jumpSpeedRange = 最後一格 (下落)，中間線性對應 (接近最高點 = 中間的格)
+/// 特效：落地 (landFx)、走路落腳 (walkFx，walkFxFrames 指定哪幾格)。
 /// 左右翻轉由 PlayerController 處理 (sprite.flipX)。
 /// </summary>
 [RequireComponent(typeof(PlayerController))]
@@ -24,16 +25,35 @@ public class PlayerAnimator : MonoBehaviour
     [Tooltip("離地超過這個秒數才換成空中的圖 (避免走過小坎時閃一下)")]
     [SerializeField] float airDelay = 0.06f;
 
+    [Header("特效")]
+    [Tooltip("落地揚起的灰塵 (自己播完自己消失)")]
+    [SerializeField] GameObject landFx;
+    [Tooltip("在空中超過這個秒數再落地才播灰塵")]
+    [SerializeField] float landFxMinAirTime = 0.25f;
+    [Tooltip("走路的灰塵 (自己播完自己消失)")]
+    [SerializeField] GameObject walkFx;
+    [Tooltip("走路動畫播到這幾格 (從 0 開始) 時噴灰塵 = 落腳的格子")]
+    [SerializeField] int[] walkFxFrames = { 0, 2 };
+
     PlayerController player;
     float timer;
     float airTime;
+    int lastWalkFrame = -1;
 
-    void Awake() => player = GetComponent<PlayerController>();
+    Collider2D body;
+
+    void Awake()
+    {
+        player = GetComponent<PlayerController>();
+        body = GetComponent<Collider2D>();
+    }
 
     void LateUpdate()
     {
         if (sprite == null) return;
 
+        if (player.IsGrounded && airTime > landFxMinAirTime && landFx != null)
+            Instantiate(landFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
         airTime = player.IsGrounded ? 0f : airTime + Time.deltaTime;
         if (airTime > airDelay && jumpFrames != null && jumpFrames.Length > 0)
         {
@@ -49,6 +69,7 @@ public class PlayerAnimator : MonoBehaviour
         if (!walking)
         {
             timer = 0f;
+            lastWalkFrame = -1;
             if (idleFrame != null) sprite.sprite = idleFrame;
             return;
         }
@@ -56,5 +77,11 @@ public class PlayerAnimator : MonoBehaviour
         timer += Time.deltaTime;
         int walkFrame = (int)(timer / frameTime) % walkFrames.Length;
         sprite.sprite = walkFrames[walkFrame];
+        if (walkFrame != lastWalkFrame)
+        {
+            lastWalkFrame = walkFrame;
+            if (walkFx != null && System.Array.IndexOf(walkFxFrames, walkFrame) >= 0)
+                Instantiate(walkFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
+        }
     }
 }

@@ -151,3 +151,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3efce60ef6417c94a948f5b0b9c779a7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Breakable
+  breakFx: {fileID: 1674125581764689336, guid: 1c8ef48980fbdd944a2a33c425d07de8, type: 3}

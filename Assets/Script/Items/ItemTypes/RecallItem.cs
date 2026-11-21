@@ -13,6 +13,8 @@ public class RecallItem : ItemDefinition
     public GameObject batteryPrefab;
     [Tooltip("重疊判定的大小 (比電池小一點，剛好貼著牆不算)")]
     public Vector2 overlapSize = new Vector2(0.8f, 0.8f);
+    [Tooltip("每顆電池生成時的特效 (自己播完自己消失)")]
+    public GameObject spawnFx;
 
     static readonly Collider2D[] overlap = new Collider2D[1];
 
@@ -51,6 +53,7 @@ public class RecallItem : ItemDefinition
         {
             bool blocked = Physics2D.OverlapBox(p, overlapSize, 0f, filter, overlap) > 0;
             var battery = Instantiate(batteryPrefab, p, Quaternion.identity).GetComponent<Battery>();
+            if (spawnFx != null) Instantiate(spawnFx, p, Quaternion.identity);
             if (blocked) battery.Explode();
         }
     }

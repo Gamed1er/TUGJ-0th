@@ -5,7 +5,7 @@ using UnityEngine;
 /// 傳送槍。右鍵：
 /// - 場上沒有子彈 → 往滑鼠方向射出 (射出就扣 1 次)
 /// - 子彈飛行中 → 取消子彈 (不退次數)
-/// 子彈撞到東西後玩家傳送過去。子彈本身的參數 (速度、黑洞拉力倍率...) 在 TeleportBullet prefab 上調整。
+/// 子彈撞到電池才會傳送過去，撞到其他東西就消失。子彈本身的參數 (速度、黑洞拉力倍率...) 在 TeleportBullet prefab 上調整。
 /// </summary>
 [CreateAssetMenu(menuName = "Items/Teleport Gun")]
 public class TeleportGunItem : ItemDefinition
@@ -25,11 +25,12 @@ public class TeleportGunItem : ItemDefinition
         ctx.Consume();
     }
 
-    /// <summary>提示線：沒有子彈在飛時，模擬子彈軌跡 (含黑洞拉力)。</summary>
-    public override bool GetAimPath(ItemUseContext ctx, List<Vector3> points)
+    /// <summary>提示線：沒有子彈在飛時，模擬子彈軌跡 (含黑洞拉力)。會打到電池 → 綠色。</summary>
+    public override bool GetAimPath(ItemUseContext ctx, List<Vector3> points, out bool highlight)
     {
+        highlight = false;
         if (TeleportBullet.Current != null || bulletPrefab == null || ctx.item.uses <= 0) return false;
-        bulletPrefab.Simulate(ctx.player.Body.position, ctx.AimDirection, points);
+        highlight = bulletPrefab.Simulate(ctx.player.Body.position, ctx.AimDirection, points);
         return true;
     }
 }
