@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 壓力板：上面有玩家或電池時算「壓著」，會打開 doors 裡的所有門；離開就放開。
 /// 需要一個 isTrigger 的 Collider2D 當偵測範圍 (放在板子表面上方一點)。
+/// 連到壓力板的門不要再接拉桿，也不要勾 startOpen。
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class PressurePlate : MonoBehaviour
