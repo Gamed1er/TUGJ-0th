@@ -1,9 +1,11 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
 /// 黑洞槍射出的黑洞。場上同時只會有一顆 (BlackHole.Current)。
 /// 飛行中：直線前進 → 撞到地形/門 = 貼在表面固定；撞到 Breakable = 破壞它周圍 breakRadius 內所有 Breakable 並消失；玩家、電池、觸發區直接穿過。
-/// 固定後：對範圍內的玩家與電池產生引力 (由它們自己呼叫 SamplePull 取得)，並播放往中心吸的粒子。
+/// 固定後：對範圍內的玩家、物體 (電池、沒電的無人機)、傳送槍子彈產生引力 (由它們自己呼叫 SamplePull 取得)，並播放往中心吸的粒子。
+/// 三種對象的吸力分開調整 (Inspector 的「引力」區塊)。
 /// </summary>
 public class BlackHole : MonoBehaviour
 {
@@ -26,8 +28,13 @@ public class BlackHole : MonoBehaviour
     [Header("引力")]
     [Tooltip("作用半徑 (格)")]
     public float pullRadius = 4f;
-    [Tooltip("中心處的最大拉力 (格/秒)。必須小於玩家走路速度與火箭上升速度，玩家才逃得掉")]
-    public float maxPullSpeed = 3.5f;
+    [Tooltip("對玩家：中心處的拉力 (格/秒，疊加在玩家速度上)。必須小於玩家走路速度 (moveSpeed) 與火箭上升速度 (riseSpeed)，玩家才逃得掉")]
+    [FormerlySerializedAs("maxPullSpeed")]
+    public float playerPull = 3.5f;
+    [Tooltip("對物體 (電池、沒電的無人機)：中心處的拉力 (格/秒)")]
+    public float objectPull = 3.5f;
+    [Tooltip("對傳送槍子彈：中心處的加速度 (格/秒²，會讓子彈轉彎；子彈初速 15)")]
+    public float bulletPull = 63f;
     [Tooltip("靠近中心時，抵銷原本速度的強度 (讓物體可以停在黑洞附近)")]
     public float damping = 15f;
 
@@ -149,11 +156,13 @@ public class BlackHole : MonoBehaviour
 
     // ---------- 引力 ----------
 
+    public enum PullTarget { Player, Object, Bullet }
+
     /// <summary>
-    /// 取得某位置受到的引力。回傳朝黑洞的速度 (格/秒)；strength = 0 (範圍外) ~ 1 (中心)。
-    /// 只有「已固定」的黑洞有引力。
+    /// 取得某位置受到的引力 (朝黑洞)。大小 = 該對象的吸力 (playerPull / objectPull / bulletPull) × 強度；
+    /// strength = 0 (範圍外) ~ 1 (中心)。只有「已固定」的黑洞有引力。
     /// </summary>
-    public static Vector2 SamplePull(Vector2 position, out float strength)
+    public static Vector2 SamplePull(Vector2 position, PullTarget target, out float strength)
     {
         strength = 0f;
         var hole = Current;
@@ -166,7 +175,8 @@ public class BlackHole : MonoBehaviour
         strength = 1f - dist / hole.pullRadius;
         // 非常靠近中心時拉力漸弱，避免來回抖動
         float nearFade = Mathf.Clamp01(dist / 0.3f);
-        return toHole / Mathf.Max(dist, 0.0001f) * (hole.maxPullSpeed * strength * nearFade);
+        float pull = target == PullTarget.Player ? hole.playerPull : target == PullTarget.Object ? hole.objectPull : hole.bulletPull;
+        return toHole / Mathf.Max(dist, 0.0001f) * (pull * strength * nearFade);
     }
 
     /// <summary>目前黑洞的阻尼 (沒有黑洞時 0)。</summary>

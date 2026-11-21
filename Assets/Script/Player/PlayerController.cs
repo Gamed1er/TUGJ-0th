@@ -87,7 +87,7 @@ public class PlayerController : MonoBehaviour
     void FixedUpdate()
     {
         float x = MoveInput;
-        Vector2 pull = BlackHole.SamplePull(rb.position, out float pullStrength);
+        Vector2 pull = BlackHole.SamplePull(rb.position, BlackHole.PullTarget.Player, out float pullStrength);
         // 擊退當作額外的外力，跟黑洞拉力一起疊加
         pull += knock;
         knock = Vector2.MoveTowards(knock, Vector2.zero, knockDecay * Time.fixedDeltaTime);
