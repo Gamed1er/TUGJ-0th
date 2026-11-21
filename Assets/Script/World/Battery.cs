@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 電池倉生成的電池：1x1、有碰撞、不會旋轉，玩家走過去就能推，也能站在上面。
 /// 會被固定的黑洞吸引；可以壓住壓力板。不存檔 (死亡重載就消失)。
-/// 可以被無人機吊起來 (SetCarried)：吊著時是 Kinematic、跟著無人機、不受黑洞影響、不跟玩家碰撞。
+/// 可以被無人機吊起來 (SetCarried)：吊著時是 Kinematic、跟著無人機、不受黑洞影響。玩家可以站在吊著的電池上 (站久了無人機會墜機，見 Drone)。
 /// 跟無人機永遠不碰撞 (Drone 生成時會設定，這裡處理電池比無人機晚生成的情況)。
 ///
 /// 爆炸 (Explode)：被火箭尾氣噴到 (PlayerRocket)、被平台擠壓 (MovingPlatform) 時觸發。
@@ -35,6 +35,8 @@ public class Battery : MonoBehaviour
     Vector2 lastPull;
 
     public bool IsCarried { get; private set; }
+    /// <summary>玩家用電池倉生成的 (一周目通關時只記錄這種，關卡原本擺的不算)。</summary>
+    public bool SpawnedByPlayer { get; set; }
     public Rigidbody2D Body => rb;
     public Collider2D Collider => col;
 
@@ -60,8 +62,6 @@ public class Battery : MonoBehaviour
         rb.bodyType = carried ? RigidbodyType2D.Kinematic : RigidbodyType2D.Dynamic;
         rb.linearVelocity = Vector2.zero;
         lastPull = Vector2.zero;
-        var player = GameManager.Instance != null ? GameManager.Instance.player : null;
-        if (player != null) Physics2D.IgnoreCollision(col, player.GetComponent<Collider2D>(), carried);
     }
 
     // ---------- 爆炸 ----------

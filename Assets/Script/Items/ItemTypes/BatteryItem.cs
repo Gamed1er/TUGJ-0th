@@ -28,7 +28,7 @@ public class BatteryItem : ItemDefinition
             return;
         }
 
-        Instantiate(batteryPrefab, cell, Quaternion.identity);
+        Instantiate(batteryPrefab, cell, Quaternion.identity).GetComponent<Battery>().SpawnedByPlayer = true;
         ctx.Consume();
     }
 }

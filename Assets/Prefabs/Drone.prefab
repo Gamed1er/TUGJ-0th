@@ -84,7 +84,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 11
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 383f545c68309064cb63032e19459316, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ff74ae7db2e219e43919f0afe28c8d3d, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -132,7 +132,7 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 0.5625}
+    oldSize: {x: 0.8333333, y: 0.8333333}
     newSize: {x: 1, y: 0.5625}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
@@ -186,6 +186,14 @@ MonoBehaviour:
     m_Bits: 256
   batteryRange: 1.2
   carryOffset: {x: 0, y: -0.8}
+  crashTime: 1
   visual: {fileID: 487483682357688714}
-  poweredColor: {r: 0.3, g: 0.9, b: 1, a: 1}
-  depletedColor: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  openSprite: {fileID: 21300000, guid: ff74ae7db2e219e43919f0afe28c8d3d, type: 3}
+  flyFrames:
+  - {fileID: 5352286359449648278, guid: 3aae73ee8f545644ca2693a2312687c0, type: 3}
+  - {fileID: 6843129032921346866, guid: 3aae73ee8f545644ca2693a2312687c0, type: 3}
+  - {fileID: -577472684307798074, guid: 3aae73ee8f545644ca2693a2312687c0, type: 3}
+  - {fileID: -7030490577846672973, guid: 3aae73ee8f545644ca2693a2312687c0, type: 3}
+  flyFrameTime: 0.08
+  closeSprite: {fileID: 21300000, guid: 57e8502f2cfeb5b4ea5710451d77d6c2, type: 3}
+  grayscaleMaterial: {fileID: 2100000, guid: 5aafa35f974f90c4c8c349981b7f04cb, type: 2}

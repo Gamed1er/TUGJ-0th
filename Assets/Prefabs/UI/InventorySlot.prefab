@@ -245,7 +245,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::InventorySlotUI
   icon: {fileID: 7522873202556315997}
   usesText: {fileID: 5197584149814109083}
-  emptyIconColor: {r: 0.4, g: 0.4, b: 0.4, a: 0.6}
+  grayscaleMaterial: {fileID: 2100000, guid: 5aafa35f974f90c4c8c349981b7f04cb, type: 2}
   keyText: {fileID: 1990310624138309801}
   selectedFrame: {fileID: 3100461063890306308}
   background: {fileID: 991309196333643287}

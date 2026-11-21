@@ -15,6 +15,6 @@ MonoBehaviour:
   id: battery
   displayName: "\u96FB\u6C60\u5009"
   description: "\u5728\u524D\u65B9\u751F\u6210\u4E00\u9846\u53EF\u63A8\u52D5\u7684\u96FB\u6C60\uFF0C\u53EF\u4EE5\u58D3\u4F4F\u58D3\u529B\u677F\u3002"
-  icon: {fileID: 21300000, guid: fda5464cbd49b92438925568090324d8, type: 3}
+  icon: {fileID: 21300000, guid: 3f275c85205092e49b3b228416ad1495, type: 3}
   startingUses: 5
   batteryPrefab: {fileID: 3537673758686987472, guid: 847bc7952bdf6104fb494cd3628cf0ad, type: 3}

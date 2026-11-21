@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 一張地圖 (區域) 的範圍。bounds 是一個 isTrigger 的 Collider2D (通常是 PolygonCollider2D)，
 /// 同時當作鏡頭的活動範圍 (CameraAreaFollower 會自動切換) 與地圖 UI 的世界範圍。
+/// 也是「區段」：二周目的「請輸入文本」每個區域各能用一次。
 /// </summary>
 public class MapArea : MonoBehaviour
 {
@@ -13,6 +14,8 @@ public class MapArea : MonoBehaviour
     [SerializeField] Collider2D bounds;
 
     public string DisplayName => displayName;
+    /// <summary>存檔用的識別 = 物件名稱 (各區域的物件名稱不要重複)。</summary>
+    public string Id => name;
     public Collider2D Bounds => bounds;
 
     public bool Contains(Vector2 point) => bounds != null && bounds.OverlapPoint(point);
