@@ -1,23 +1,20 @@
 using UnityEngine;
 
 /// <summary>
-/// 存檔點。走進範圍 = 「去過」(地圖亮起)；站在上面按 E = 存檔。
-/// IsActive = false 時不能存檔 (預留給「消耗存檔」trick，呼叫 GameManager.DisableSavePoint)。
+/// 節點 (自動存檔點，遊戲中看不見)。玩家走進範圍 → GameManager.EnterNode：
+/// - 往前推進 (順序比目前節點後面) 或還沒有快照 → 寫入這個節點的快照、顯示「已存檔」，並刪掉它後面所有節點的快照 (新的時間線)
+/// - 往回走 → 只把重生點改成這裡，不改快照
+/// 順序 = 場景中的 x 座標 (由左到右)。範圍要蓋住整條通道高度，玩家才不會跳過。
+/// IsActive = false 時不存檔、不能回溯 (預留給「消耗存檔」trick，呼叫 GameManager.DisableSavePoint)。
 /// 複製後請按 ⋮ → "Regenerate ID"。
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
-public class SavePoint : MonoBehaviour, IInteractable
+public class SavePoint : MonoBehaviour
 {
     [SerializeField] string id;
-    [SerializeField] string displayName = "存檔點";
-    [Tooltip("玩家重生位置 (相對於存檔點)")]
+    [SerializeField] string displayName = "節點";
+    [Tooltip("玩家重生位置 (相對於節點)")]
     [SerializeField] Vector2 spawnOffset = new Vector2(0f, 1f);
-
-    [Header("外觀 (美術可替換)")]
-    [SerializeField] SpriteRenderer visual;
-    [SerializeField] Color undiscoveredColor = new Color(0.5f, 0.5f, 0.5f);
-    [SerializeField] Color discoveredColor = new Color(0.3f, 0.8f, 1f);
-    [SerializeField] Color disabledColor = new Color(0.3f, 0.3f, 0.3f, 0.5f);
 
     public string Id => id;
     public string DisplayName => displayName;
@@ -25,23 +22,15 @@ public class SavePoint : MonoBehaviour, IInteractable
     public bool IsActive { get; private set; } = true;
     public bool Discovered { get; private set; }
 
-    public Vector3 PromptPosition => transform.position + Vector3.up * 2f;
-
-    public string GetPrompt(PlayerInteractor who) => IsActive ? "E 存檔" : null;
-
-    public void Interact(PlayerInteractor who) => GameManager.Instance.SaveAt(this);
-
     public void SetState(bool discovered, bool active)
     {
         Discovered = discovered;
         IsActive = active;
-        if (visual != null)
-            visual.color = !active ? disabledColor : discovered ? discoveredColor : undiscoveredColor;
     }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.GetComponent<PlayerController>() != null) GameManager.Instance.Discover(this);
+        if (other.GetComponent<PlayerController>() != null) GameManager.Instance.EnterNode(this);
     }
 
     void OnValidate()
@@ -54,7 +43,9 @@ public class SavePoint : MonoBehaviour, IInteractable
 
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.cyan;
+        var box = GetComponent<BoxCollider2D>();
+        Gizmos.color = new Color(0f, 1f, 1f, 0.6f);
+        if (box != null) Gizmos.DrawWireCube(transform.TransformPoint(box.offset), Vector3.Scale(box.size, transform.lossyScale));
         Gizmos.DrawWireSphere(SpawnPosition, 0.2f);
     }
 }

@@ -5,6 +5,7 @@ using UnityEngine;
 /// 斜坡處理：站在地面時關掉重力，速度沿著地面方向設定 → 上下坡等速、靜止不下滑。
 /// 飛行 (火箭)：SetFlying 開啟後沒有重力，垂直速度固定。
 /// 黑洞引力：每個物理步向 BlackHole.SamplePull 取得拉力，當作「額外速度」疊加上去。
+/// 擊退 (電池爆炸)：AddKnockback 加一個外力速度，同樣疊加上去，在 knockbackTime 秒內衰減到 0。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
 public class PlayerController : MonoBehaviour
@@ -31,6 +32,10 @@ public class PlayerController : MonoBehaviour
     [Tooltip("往上的拉力超過這個值 (格/秒) 就會把玩家拉離地面")]
     public float pullLiftThreshold = 0.5f;
 
+    [Header("擊退")]
+    [Tooltip("擊退速度衰減到 0 所需的時間 (秒)")]
+    public float knockbackTime = 0.3f;
+
     [Header("外觀")]
     public SpriteRenderer sprite;
 
@@ -38,6 +43,10 @@ public class PlayerController : MonoBehaviour
     public bool IsFlying { get; private set; }
     public int Facing { get; private set; } = 1;
     public Rigidbody2D Body => rb;
+    /// <summary>玩家自己的左右輸入 (操控無人機時為 0)。</summary>
+    public float MoveInput => Drone.Controlled != null ? 0f : GameInput.Move;
+    bool JumpPressedInput => Drone.Controlled == null && GameInput.JumpPressed;
+    bool JumpHeldInput => Drone.Controlled == null && GameInput.JumpHeld;
 
     Rigidbody2D rb;
     CapsuleCollider2D col;
@@ -51,7 +60,9 @@ public class PlayerController : MonoBehaviour
     bool jumping;
     bool jumpCutDone;
     float flyRiseSpeed;
-    float lastPullY; // 上一步疊加的垂直拉力 (空中時要先扣掉，才不會越加越快)
+    float lastPullY; // 上一步疊加的垂直外力 (黑洞拉力 + 擊退；空中時要先扣掉，才不會越加越快)
+    Vector2 knock;   // 目前的擊退速度
+    float knockDecay;
 
     void Awake()
     {
@@ -64,9 +75,9 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (GameInput.JumpPressed) lastJumpPressedTime = Time.time;
+        if (JumpPressedInput) lastJumpPressedTime = Time.time;
 
-        float x = GameInput.Move;
+        float x = MoveInput;
         if (x > 0.01f) Facing = 1;
         else if (x < -0.01f) Facing = -1;
         if (sprite != null) sprite.flipX = Facing < 0;
@@ -74,8 +85,11 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        float x = GameInput.Move;
+        float x = MoveInput;
         Vector2 pull = BlackHole.SamplePull(rb.position, out float pullStrength);
+        // 擊退當作額外的外力，跟黑洞拉力一起疊加
+        pull += knock;
+        knock = Vector2.MoveTowards(knock, Vector2.zero, knockDecay * Time.fixedDeltaTime);
 
         // 火箭飛行：沒有重力、垂直速度固定，左右照常
         if (IsFlying)
@@ -117,7 +131,7 @@ public class PlayerController : MonoBehaviour
             ownY = Mathf.MoveTowards(ownY, 0f, pullStrength * BlackHole.Damping * Time.fixedDeltaTime);
 
             // 小跳：上升中放開跳躍鍵
-            if (jumping && !jumpCutDone && ownY > 0f && !GameInput.JumpHeld)
+            if (jumping && !jumpCutDone && ownY > 0f && !JumpHeldInput)
             {
                 ownY *= jumpCutMultiplier;
                 jumpCutDone = true;
@@ -172,6 +186,13 @@ public class PlayerController : MonoBehaviour
     }
 
     // ---------- 給道具 / GameManager 用的 API ----------
+
+    /// <summary>擊退 (電池爆炸)：疊加一個外力速度，knockbackTime 秒內衰減到 0。多次擊退會疊加。</summary>
+    public void AddKnockback(Vector2 velocity)
+    {
+        knock += velocity;
+        knockDecay = knock.magnitude / Mathf.Max(knockbackTime, 0.01f);
+    }
 
     /// <summary>強制往上彈 (道具用)，空中也有效，不受「放開跳躍鍵小跳」影響。</summary>
     public void ForceJump(float velocity)

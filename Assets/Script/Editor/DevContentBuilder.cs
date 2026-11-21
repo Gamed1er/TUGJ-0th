@@ -60,7 +60,9 @@ public static class DevContentBuilder
     class Art
     {
         public Sprite square, slopeR, slopeL, spike, circle, ring, player, savePoint;
-        public Sprite battery, plate, breakable, iconRocket, iconBattery, iconBlackHole;
+        public Sprite battery, plate, breakable, lever, drone, iconRocket, iconBattery, iconBlackHole, iconDrone;
+        public Sprite[] playerFrames;
+        public Material particle;
         public TileBase groundTile, slopeRTile, slopeLTile, spikeTile;
     }
 
@@ -83,6 +85,13 @@ public static class DevContentBuilder
         a.battery = MakeSprite("battery", 32, 32, (x, y) => (x >= 1 && x <= 30 && y >= 1 && y <= 26) || (x >= 11 && x <= 20 && y > 26 && y <= 30),
             Color.white);
         a.plate = MakeSprite("pressure_plate", 32, 8, (x, y) => x >= 2 && x <= 29, Color.white, null, new Vector2(0.5f, 0f));
+        a.lever = MakeSprite("lever", 32, 32, (x, y) => (y < 6 && x > 6 && x < 25) || (Mathf.Abs((x - 16) - (y - 6) * 0.6f) < 2.5f && y >= 6 && y < 28),
+            Color.white, null, new Vector2(0.5f, 0f));
+        // 無人機：機身 + 兩側螺旋槳
+        a.drone = MakeSprite("drone", 32, 18, (x, y) => (y >= 3 && y <= 10 && x >= 8 && x <= 23) || (y >= 13 && y <= 15 && (x <= 11 || x >= 20)) || (y >= 10 && y <= 13 && (x == 6 || x == 25)),
+            Color.white);
+        a.iconDrone = MakeSprite("icon_drone", 32, 32, (x, y) => (y >= 10 && y <= 18 && x >= 9 && x <= 22) || (y >= 22 && y <= 24 && (x <= 12 || x >= 19)) || (y >= 18 && y <= 22 && (x == 6 || x == 25)),
+            new Color(0.3f, 0.9f, 1f));
         a.breakable = MakeSprite("breakable", 32, 32, (x, y) => !(Mathf.Abs(x - y) <= 1 || (Mathf.Abs(x + y - 31) <= 1 && x > 16)), Color.white);
         a.iconRocket = MakeSprite("icon_rocket", 32, 32, (x, y) => (y > 8 && y < 26 && Mathf.Abs(x - 15.5f) < 6) || (y >= 26 && Mathf.Abs(x - 15.5f) < 31 - y) || (y <= 8 && y > 2 && Mathf.Abs(x - 15.5f) < 3),
             new Color(0.4f, 0.7f, 1f));
@@ -90,6 +99,9 @@ public static class DevContentBuilder
             new Color(1f, 0.85f, 0.25f));
         a.iconBlackHole = MakeSprite("icon_black_hole", 32, 32, (x, y) => { float d = new Vector2(x - 15.5f, y - 15.5f).magnitude; return d < 14f && (d < 7f || d > 10f); },
             new Color(0.7f, 0.3f, 1f));
+
+        a.playerFrames = SlicePlayerSheet();
+        a.particle = MakeParticleMaterial(a.circle);
 
         a.groundTile = MakeTile("Ground", a.square, new Color(0.35f, 0.3f, 0.28f), Tile.ColliderType.Grid);
         a.slopeRTile = MakeTile("SlopeRight", a.slopeR, new Color(0.35f, 0.3f, 0.28f), Tile.ColliderType.Sprite);
@@ -128,6 +140,61 @@ public static class DevContentBuilder
         return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
+    const string PlayerSheetPath = "Assets/Art/protagnist/pro-Sheet.png";
+
+    /// <summary>
+    /// 角色圖 pro-Sheet.png：200x40，4 格 (每格 50x40)，第 1~4 格 = 走路、第 2 格 = 站立。
+    /// 角色本體約 22x34 像素，PPU 24 → 約 1.4 格高，對齊玩家碰撞體 (高 1.5)；pivot 讓腳底貼齊碰撞體底部。
+    /// </summary>
+    static Sprite[] SlicePlayerSheet()
+    {
+        var imp = (TextureImporter)AssetImporter.GetAtPath(PlayerSheetPath);
+        imp.textureType = TextureImporterType.Sprite;
+        imp.spriteImportMode = SpriteImportMode.Multiple;
+        imp.spritePixelsPerUnit = 24;
+        imp.filterMode = FilterMode.Point;
+        imp.textureCompression = TextureImporterCompression.Uncompressed;
+        imp.SaveAndReimport();
+
+        var factory = new SpriteDataProviderFactories();
+        factory.Init();
+        var provider = factory.GetSpriteEditorDataProviderFromObject(imp);
+        provider.InitSpriteEditorDataProvider();
+        var rects = new SpriteRect[4];
+        for (int i = 0; i < 4; i++)
+            rects[i] = new SpriteRect
+            {
+                name = $"pro_{i + 1}",
+                rect = new Rect(i * 50, 0, 50, 40),
+                alignment = SpriteAlignment.Custom,
+                pivot = new Vector2(0.5f, 0.475f),
+                spriteID = GUID.Generate(),
+            };
+        provider.SetSpriteRects(rects);
+        provider.Apply();
+        imp.SaveAndReimport();
+
+        var frames = new Sprite[4];
+        foreach (var o in AssetDatabase.LoadAllAssetsAtPath(PlayerSheetPath))
+            if (o is Sprite sp && sp.name.StartsWith("pro_")) frames[int.Parse(sp.name.Substring(4)) - 1] = sp;
+        return frames;
+    }
+
+    /// <summary>粒子用材質 (URP 2D 的 Sprite-Unlit + 圓形貼圖，支援粒子顏色/透明度)。</summary>
+    static Material MakeParticleMaterial(Sprite circle)
+    {
+        string path = $"{ArtDir}/Particle.mat";
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (mat == null)
+        {
+            mat = new Material(Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default"));
+            AssetDatabase.CreateAsset(mat, path);
+        }
+        mat.mainTexture = circle.texture;
+        EditorUtility.SetDirty(mat);
+        return mat;
+    }
+
     /// <summary>精確指定 Sprite 的碰撞外形 (像素座標，以中心為原點)，斜坡才會是完美 45 度。</summary>
     static void SetPhysicsShape(TextureImporter imp, Vector2[] outline)
     {
@@ -160,7 +227,7 @@ public static class DevContentBuilder
 
     class Prefabs
     {
-        public GameObject player, savePoint, pickup, battery, door, plate, breakable, blackHole;
+        public GameObject player, savePoint, lever, battery, door, plate, breakable, blackHole, drone, platform;
         public InventorySlotUI slot;
         public MapNodeUI mapNode;
     }
@@ -169,6 +236,31 @@ public static class DevContentBuilder
     {
         var p = new Prefabs();
         int groundLayer = LayerMask.NameToLayer("Ground");
+
+        // --- 電池爆炸特效 (生成後自己播放、播完自己刪除) ---
+        var boom = MakeParticles("ExplosionFx", null, art.particle, 25);
+        {
+            var main = boom.main;
+            main.playOnAwake = true;
+            main.loop = false;
+            main.duration = 0.5f;
+            main.stopAction = ParticleSystemStopAction.Destroy;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.3f, 0.5f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 7f); // 約等於爆炸半徑 2.5 格
+            main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.7f);
+            main.startColor = new Color(1f, 0.75f, 0.2f);
+            var emission = boom.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 50) });
+            var shape = boom.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.3f;
+            var col = boom.colorOverLifetime; col.enabled = true;
+            col.color = Fade(new Color(1f, 0.85f, 0.3f), new Color(1f, 0.35f, 0.1f), 1f, 0f);
+            var size = boom.sizeOverLifetime; size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.4f));
+        }
+        var boomPrefab = SavePrefab(boom.gameObject, "ExplosionFx");
 
         // --- 電池 (Ground 圖層：玩家可以站上去、可以推) ---
         const string batteryMatPath = "Assets/Art/Physics/Battery.physicsMaterial2D";
@@ -190,7 +282,7 @@ public static class DevContentBuilder
         batRb.freezeRotation = true;
         batRb.interpolation = RigidbodyInterpolation2D.Interpolate;
         batRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
-        battery.AddComponent<Battery>();
+        battery.AddComponent<Battery>().explosionFx = boomPrefab;
         p.battery = SavePrefab(battery, "Battery");
 
         // --- 門 (1x1，場景裡用 Scale Y 拉高) ---
@@ -237,6 +329,22 @@ public static class DevContentBuilder
         var holeComp = hole.AddComponent<BlackHole>();
         holeComp.hitMask = 1 << groundLayer;
         holeComp.rangeIndicator = range;
+        // 吸入粒子：圓形外圈生成往中心移動，越靠近中心越明顯，到中心消失 (半徑/壽命由 BlackHole 依 pullRadius 設定)
+        var pull = MakeParticles("PullFx", hole.transform, art.particle, 18);
+        {
+            var main = pull.main;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.18f, 0.375f);
+            main.startColor = new Color(0.3f, 0.05f, 0.4f);
+            var emission = pull.emission; emission.rateOverTime = 60f;
+            var shape = pull.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radiusThickness = 0f; // 只從外圈生成
+            var col = pull.colorOverLifetime; col.enabled = true;
+            col.color = Fade(new Color(0.35f, 0.05f, 0.5f), new Color(0.08f, 0f, 0.12f), 0f, 1f);
+            var size = pull.sizeOverLifetime; size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.3f));
+        }
+        holeComp.pullFx = pull;
         p.blackHole = SavePrefab(hole, "BlackHole");
 
         // --- 玩家 ---
@@ -250,7 +358,7 @@ public static class DevContentBuilder
 
         var player = new GameObject("Player") { tag = "Player" };
         var psr = player.AddComponent<SpriteRenderer>();
-        psr.sprite = art.player; psr.sortingOrder = 10;
+        psr.sprite = art.playerFrames[1]; psr.sortingOrder = 10;
         var rb = player.AddComponent<Rigidbody2D>();
         rb.gravityScale = 3f;
         rb.freezeRotation = true;
@@ -265,36 +373,93 @@ public static class DevContentBuilder
         player.AddComponent<Inventory>();
         player.AddComponent<PlayerInteractor>();
         player.AddComponent<PlayerItemUser>();
-        player.AddComponent<PlayerRocket>();
+        var rocket = player.AddComponent<PlayerRocket>();
+        var anim = player.AddComponent<PlayerAnimator>();
+        Set(anim, "sprite", psr);
+        Set(anim, "walkFrames", art.playerFrames);
+        Set(anim, "idleFrame", art.playerFrames[1]);
+        // 火箭噴射：腳下往下噴的淺灰色粒子
+        var thrust = MakeParticles("ThrustFx", player.transform, art.particle, 9);
+        thrust.transform.localPosition = new Vector3(0f, -0.75f, 0f);
+        thrust.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Cone 預設朝 +Z，轉成朝下
+        {
+            var main = thrust.main;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.25f, 0.4f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.225f, 0.45f);
+            main.startColor = new Color(0.82f, 0.82f, 0.85f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            var emission = thrust.emission; emission.rateOverTime = 90f;
+            var shape = thrust.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 12f; shape.radius = 0.15f;
+            var col = thrust.colorOverLifetime; col.enabled = true;
+            col.color = Fade(new Color(0.85f, 0.85f, 0.88f), new Color(0.6f, 0.6f, 0.62f), 0.9f, 0f);
+        }
+        Set(rocket, "thrustFx", thrust);
         p.player = SavePrefab(player, "Player");
 
-        // --- 存檔點 ---
-        var sp = new GameObject("SavePoint");
-        var spVisual = new GameObject("Visual");
-        spVisual.transform.SetParent(sp.transform, false);
-        var spsr = spVisual.AddComponent<SpriteRenderer>();
-        spsr.sprite = art.savePoint; spsr.sortingOrder = 5; spsr.color = new Color(0.5f, 0.5f, 0.5f);
+        // --- 節點 (隱形自動存檔點；範圍蓋住整條通道高度，玩家飛過也會觸發) ---
+        var sp = new GameObject("SavePoint") { layer = 2 };
         var spCol = sp.AddComponent<BoxCollider2D>();
-        spCol.isTrigger = true; spCol.size = new Vector2(1.5f, 2f); spCol.offset = new Vector2(0f, 1f);
+        spCol.isTrigger = true; spCol.size = new Vector2(1f, 14f); spCol.offset = new Vector2(0f, 7f);
         var spComp = sp.AddComponent<SavePoint>();
-        Set(spComp, "visual", spsr);
         Set(spComp, "spawnOffset", new Vector2(0f, 0.8f));
         Set(spComp, "id", "");
         p.savePoint = SavePrefab(sp, "SavePoint");
 
-        // --- 場景道具 ---
-        var pickup = new GameObject("ItemPickup");
-        var icon = new GameObject("Icon");
-        icon.transform.SetParent(pickup.transform, false);
-        icon.transform.localScale = Vector3.one * 0.8f;
-        var isr = icon.AddComponent<SpriteRenderer>();
-        isr.sortingOrder = 5;
-        var pcCol = pickup.AddComponent<CircleCollider2D>();
-        pcCol.isTrigger = true; pcCol.radius = 0.7f;
-        var pu = pickup.AddComponent<ItemPickup>();
-        Set(pu, "iconRenderer", isr);
-        Set(pu, "id", "");
-        p.pickup = SavePrefab(pickup, "ItemPickup");
+        // --- 拉桿 (原點 = 地面表面) ---
+        var lever = new GameObject("Lever") { layer = 2 };
+        var leverVisual = new GameObject("Visual");
+        leverVisual.transform.SetParent(lever.transform, false);
+        var leverSr = leverVisual.AddComponent<SpriteRenderer>();
+        leverSr.sprite = art.lever; leverSr.sortingOrder = 5;
+        var leverCol = lever.AddComponent<BoxCollider2D>();
+        leverCol.isTrigger = true; leverCol.size = new Vector2(1.5f, 1.5f); leverCol.offset = new Vector2(0f, 0.75f);
+        var leverComp = lever.AddComponent<Lever>();
+        Set(leverComp, "visual", leverSr);
+        p.lever = SavePrefab(lever, "Lever");
+
+        // --- 無人機 (Default 圖層：黑洞會穿過；跟玩家/電池的碰撞由 Drone 程式關掉) ---
+        var drone = new GameObject("Drone");
+        var droneSr = drone.AddComponent<SpriteRenderer>();
+        droneSr.sprite = art.drone; droneSr.sortingOrder = 11;
+        var droneCol = drone.AddComponent<BoxCollider2D>();
+        droneCol.size = new Vector2(0.9f, 0.45f);
+        var droneRb = drone.AddComponent<Rigidbody2D>();
+        droneRb.gravityScale = 0f;
+        droneRb.freezeRotation = true;
+        droneRb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        droneRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        var droneComp = drone.AddComponent<Drone>();
+        droneComp.blockMask = 1 << groundLayer;
+        droneComp.visual = droneSr;
+        p.drone = SavePrefab(drone, "Drone");
+
+        // --- 軌道平台 (根物件不動；Body 是會動的平台，預設 3x0.5；End 是終點) ---
+        var platform = new GameObject("MovingPlatform");
+        var track = new GameObject("Track");
+        track.transform.SetParent(platform.transform, false);
+        var trackSr = track.AddComponent<SpriteRenderer>();
+        trackSr.sprite = art.square; trackSr.color = new Color(0.25f, 0.25f, 0.3f); trackSr.sortingOrder = 1;
+        var pBody = new GameObject("Body") { layer = groundLayer };
+        pBody.transform.SetParent(platform.transform, false);
+        pBody.transform.localScale = new Vector3(3f, 0.5f, 1f);
+        var pBodySr = pBody.AddComponent<SpriteRenderer>();
+        pBodySr.sprite = art.square; pBodySr.color = new Color(0.55f, 0.6f, 0.7f); pBodySr.sortingOrder = 4;
+        pBody.AddComponent<BoxCollider2D>();
+        var pRb = pBody.AddComponent<Rigidbody2D>();
+        pRb.bodyType = RigidbodyType2D.Kinematic;
+        pRb.interpolation = RigidbodyInterpolation2D.Interpolate;
+        var pEnd = new GameObject("End");
+        pEnd.transform.SetParent(platform.transform, false);
+        pEnd.transform.localPosition = new Vector3(0f, 3f, 0f);
+        var mp = platform.AddComponent<MovingPlatform>();
+        Set(mp, "body", pRb);
+        Set(mp, "end", pEnd.transform);
+        Set(mp, "track", trackSr);
+        mp.blockMask = 1 << groundLayer;
+        p.platform = SavePrefab(platform, "MovingPlatform");
 
         // --- UI：物品欄格子 ---
         var slot = NewUI("InventorySlot", null, new Vector2(96, 96));
@@ -316,6 +481,7 @@ public static class DevContentBuilder
         Set(slotUI, "usesText", dur);
         Set(slotUI, "keyText", key);
         Set(slotUI, "selectedFrame", selected.gameObject);
+        Set(slotUI, "background", bg);
         p.slot = SavePrefab(slot.gameObject, "UI/InventorySlot").GetComponent<InventorySlotUI>();
 
         // --- UI：地圖節點 ---
@@ -333,6 +499,29 @@ public static class DevContentBuilder
         return p;
     }
 
+    static ParticleSystem MakeParticles(string name, Transform parent, Material mat, int sortingOrder)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = ps.main;
+        main.playOnAwake = false;
+        main.loop = true;
+        var r = go.GetComponent<ParticleSystemRenderer>();
+        r.sharedMaterial = mat;
+        r.sortingOrder = sortingOrder;
+        return ps;
+    }
+
+    static Gradient Fade(Color from, Color to, float alphaFrom, float alphaTo)
+    {
+        var g = new Gradient();
+        g.SetKeys(new[] { new GradientColorKey(from, 0f), new GradientColorKey(to, 1f) },
+                  new[] { new GradientAlphaKey(alphaFrom, 0f), new GradientAlphaKey(alphaTo, 1f) });
+        return g;
+    }
+
     static GameObject SavePrefab(GameObject go, string name)
     {
         var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PrefabDir}/{name}.prefab");
@@ -347,6 +536,7 @@ public static class DevContentBuilder
     static RocketItem rocketItem;
     static BatteryItem batteryItem;
     static BlackHoleGunItem blackHoleItem;
+    static DroneItem droneItem;
 
     static void BuildItems(Art art, Prefabs p)
     {
@@ -367,6 +557,12 @@ public static class DevContentBuilder
         blackHoleItem.startingUses = 3; blackHoleItem.blackHolePrefab = p.blackHole.GetComponent<BlackHole>();
         blackHoleItem.description = "往滑鼠方向射出黑洞，再按一次固定、固定後再按收回。";
         EditorUtility.SetDirty(blackHoleItem);
+
+        droneItem = LoadOrCreate<DroneItem>($"{ItemDir}/Drone.asset");
+        droneItem.id = "drone"; droneItem.displayName = "無人機"; droneItem.icon = art.iconDrone;
+        droneItem.startingUses = 3; droneItem.dronePrefab = p.drone.GetComponent<Drone>();
+        droneItem.description = "右鍵召喚並操控 (WASD)，E 拉拉桿 / 吊起放下電池，用完就沒電。再按右鍵退出操控。";
+        EditorUtility.SetDirty(droneItem);
     }
 
     static T LoadOrCreate<T>(string path) where T : ScriptableObject
@@ -433,7 +629,8 @@ public static class DevContentBuilder
         {
             player = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Player.prefab"),
             savePoint = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/SavePoint.prefab"),
-            pickup = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/ItemPickup.prefab"),
+            lever = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Lever.prefab"),
+            platform = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/MovingPlatform.prefab"),
             door = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Door.prefab"),
             plate = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/PressurePlate.prefab"),
             breakable = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Breakable.prefab"),
@@ -443,6 +640,7 @@ public static class DevContentBuilder
         rocketItem = AssetDatabase.LoadAssetAtPath<RocketItem>($"{ItemDir}/Rocket.asset");
         batteryItem = AssetDatabase.LoadAssetAtPath<BatteryItem>($"{ItemDir}/Battery.asset");
         blackHoleItem = AssetDatabase.LoadAssetAtPath<BlackHoleGunItem>($"{ItemDir}/BlackHoleGun.asset");
+        droneItem = AssetDatabase.LoadAssetAtPath<DroneItem>($"{ItemDir}/Drone.asset");
         art.circle = AssetDatabase.LoadAssetAtPath<Sprite>($"{ArtDir}/circle.png");
 
         // --- 光源 (URP 2D 需要 Global Light 才不會全黑) ---
@@ -499,10 +697,29 @@ public static class DevContentBuilder
         PlacePrefab(p.breakable, "Breakable", new Vector2(90.5f, 1.5f));
         var doorB = PlaceDoor(p, 120, 0, 4);
         PlacePlate(p, new Vector2(113.5f, 3f), doorB);
+        // 拉桿 + 橋：尖刺 (x = 125~126) 上方的橋一開始不存在，拉下拉桿才出現
+        var bridge = PlacePrefab(p.door, "Bridge", new Vector2(125.5f, 0.5f)).GetComponent<Door>();
+        bridge.transform.localScale = new Vector3(4f, 1f, 1f); // 橫放 = 橋，蓋住尖刺 (x = 123.5 ~ 127.5)
+        Set(bridge, "startOpen", true);
+        var lever = PlacePrefab(p.lever, "Lever", new Vector2(122.5f, 0f)).GetComponent<Lever>();
+        Set(lever, "targets", new Activatable[] { bridge });
+
+        // --- 地圖 B 延伸 ---
+        PlaceSavePoint(p, "升降平台", new Vector2(138.5f, 0f));
+        // 升降平台：凹槽 x = 142~144，頂面從 y = 0 升到 y = 6 (右邊高台)。
+        // 站在平台上面向左用電池倉 → 電池剛好生成在 x = 141 的壓力板上 → 平台載人上升。
+        // 平台最左格 (x = 142) 上方 y = 7 有低天花板 → 站在那格上升會被擠死 (測試用)。
+        var lift = PlacePrefab(p.platform, "Lift", new Vector2(143.5f, -0.25f)).GetComponent<MovingPlatform>();
+        lift.transform.Find("End").localPosition = new Vector3(0f, 6f, 0f);
+        PlacePlate(p, new Vector2(141.5f, 0f), lift);
+        // 無人機：x = 166 的牆只在 y = 10~11 有縫，無人機飛過去拉 x = 169 的拉桿 → 打開 x = 166 的門
+        var doorC = PlaceDoor(p, 166, 0, 4);
+        var droneLever = PlacePrefab(p.lever, "Lever (無人機)", new Vector2(169.5f, 0f)).GetComponent<Lever>();
+        Set(droneLever, "targets", new Activatable[] { doorC });
 
         // --- 地圖區域 (鏡頭範圍) 與邊界轉場 ---
         var areaA = MakeArea("Area A", "地圖 A", -15, 61);
-        MakeArea("Area B", "地圖 B", 80, 141);
+        MakeArea("Area B", "地圖 B", 80, 177);
         // 兩個邊界的 y 都放在 0，所以相對高度直接對應
         var edgeA = MakeEdge("Edge A → B", new Vector2(60.5f, 0f), new Vector2(-1.5f, 0f));
         var edgeB = MakeEdge("Edge B → A", new Vector2(80.5f, 0f), new Vector2(1.5f, 0f));
@@ -598,6 +815,10 @@ public static class DevContentBuilder
         mapTitle.rectTransform.anchorMin = mapTitle.rectTransform.anchorMax = new Vector2(0.5f, 1f);
         mapTitle.rectTransform.sizeDelta = new Vector2(600, 80);
         mapTitle.rectTransform.anchoredPosition = new Vector2(0, -70);
+        var mapHint = NewText("Hint", mapPanel.rectTransform, "", 28, TextAnchor.MiddleCenter);
+        mapHint.rectTransform.anchorMin = mapHint.rectTransform.anchorMax = new Vector2(0.5f, 0f);
+        mapHint.rectTransform.sizeDelta = new Vector2(1200, 60);
+        mapHint.rectTransform.anchoredPosition = new Vector2(0, 70);
         var nodeArea = NewUI("NodeArea", mapPanel.rectTransform, Vector2.zero);
         Stretch(nodeArea, 0);
         nodeArea.offsetMin = new Vector2(120, 120); nodeArea.offsetMax = new Vector2(-120, -160);
@@ -609,6 +830,7 @@ public static class DevContentBuilder
         Set(mapUI, "nodeArea", nodeArea);
         Set(mapUI, "nodePrefab", p.mapNode);
         Set(mapUI, "playerMarker", marker.rectTransform);
+        Set(mapUI, "hintLabel", mapHint);
 
         var fader = MakeFader(canvas);
 
@@ -619,7 +841,8 @@ public static class DevContentBuilder
         gm.playerStart = start;
         gm.boundsTilemap = ground;
         gm.fader = fader;
-        gm.startingItems = new List<ItemDefinition> { rocketItem, batteryItem, blackHoleItem };
+        gm.vcam = vcam;
+        gm.startingItems = new List<ItemDefinition> { rocketItem, batteryItem, blackHoleItem, droneItem };
         gmGO.AddComponent<DebugTools>();
 
         EditorSceneManager.SaveScene(scene, $"{SceneDir}/Game.unity");
@@ -664,14 +887,21 @@ public static class DevContentBuilder
         Range(47, 60, -1);
         Fill(56, 56, 4, 13);      // 門上方的牆 (門在 x = 56, y = 0~3)。右邊通到 x = 61 → 轉場到地圖 B
 
-        // ===== 地圖 B (x = 80 ~ 140)，左邊界接地圖 A 的右邊界 =====
-        Ceiling(80, 136);
-        Range(80, 136, -1);
+        // ===== 地圖 B (x = 80 ~ 176)，左邊界接地圖 A 的右邊界 =====
+        Ceiling(80, 172);
+        Range(80, 141, -1);
         Fill(90, 90, 2, 13);      // 可破壞牆上方 (x = 90, y = 0~1 是 Breakable)
         Range(112, 115, 2);       // 3 格高的平台，上面有壓力板 → 用黑洞把電池吸上去 / 火箭 + 電池
         Fill(120, 120, 4, 13);    // 門上方的牆 (門在 x = 120, y = 0~3)
         Spike(125, 0); Spike(126, 0);
-        Range(137, 140, 16);      // 右邊界牆
+        // --- 延伸：升降平台 + 無人機 ---
+        Range(142, 144, -2);      // 升降平台的凹槽 (平台頂面與地面齊平)
+        Range(145, 152, 5);       // 高台 (站立面 y = 6)
+        Fill(142, 142, 7, 13);    // 升降平台最左格上方的低天花板 (擠壓測試)
+        Range(153, 172, -1);
+        Fill(166, 166, 4, 9);     // 門 (x = 166, y = 0~3) 上方的牆，y = 10~11 留縫給無人機
+        Fill(166, 166, 12, 13);
+        Range(173, 176, 16);      // 右邊界牆
     }
 
     /// <summary>建立一個區域：x 範圍 [xMin, xMax]，y 固定 -10 ~ 20。</summary>
@@ -727,10 +957,10 @@ public static class DevContentBuilder
     }
 
     /// <summary>壓力板放在地面表面 surface 上。</summary>
-    static void PlacePlate(Prefabs p, Vector2 surface, params Door[] doors)
+    static void PlacePlate(Prefabs p, Vector2 surface, params Activatable[] targets)
     {
         var plate = PlacePrefab(p.plate, "PressurePlate", surface).GetComponent<PressurePlate>();
-        Set(plate, "doors", doors);
+        Set(plate, "targets", targets);
     }
 
     static Tilemap MakeTilemap(string name, Transform parent, int layer, int order)

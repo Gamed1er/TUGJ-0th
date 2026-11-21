@@ -248,6 +248,8 @@ MonoBehaviour:
   emptyIconColor: {r: 0.4, g: 0.4, b: 0.4, a: 0.6}
   keyText: {fileID: 1990310624138309801}
   selectedFrame: {fileID: 3100461063890306308}
+  background: {fileID: 991309196333643287}
+  droneActiveColor: {r: 0.1, g: 0.55, b: 0.65, a: 0.9}
 --- !u!1 &6708787165486909934
 GameObject:
   m_ObjectHideFlags: 0

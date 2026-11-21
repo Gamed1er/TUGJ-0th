@@ -20,6 +20,8 @@ public class PlayerInteractor : MonoBehaviour
 
     void Update()
     {
+        if (Drone.Controlled != null) return; // 操控無人機時 E 給無人機用 (提示也由無人機顯示)
+
         inRange.RemoveAll(i => i == null || (i as Object) == null); // 被 Destroy 的物件
 
         current = null;

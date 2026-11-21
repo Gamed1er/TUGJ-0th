@@ -1,15 +1,16 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
 
 /// <summary>
 /// 遊戲場景的總管 (每個 Game 場景一個)。負責：
-/// - 進場時讀檔並套用 (玩家位置、物品欄、存檔點狀態、已撿道具)
-/// - 存檔 (SaveAt)、記錄去過的存檔點 / 撿走的道具
-/// - 死亡 → 淡出 → 重新載入場景 (= 回到最後存檔狀態)
+/// - 進場時讀檔並套用 (玩家位置 = 目前節點、物品欄 = 目前節點的快照、節點狀態)
+/// - 自動存檔 (EnterNode)、地圖回溯 (RewindTo)
+/// - 死亡 → 淡出 → 重新載入場景 (= 回到目前節點的快照)
 /// 其他腳本透過 GameManager.Instance 呼叫。
 /// </summary>
 public class GameManager : MonoBehaviour
@@ -23,13 +24,15 @@ public class GameManager : MonoBehaviour
     [Tooltip("地圖 UI 用來計算世界範圍的 Tilemap")]
     public Tilemap boundsTilemap;
     public ScreenFader fader;
+    [Tooltip("跟隨玩家的鏡頭 (操控無人機時改跟無人機)")]
+    public CinemachineCamera vcam;
 
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
     public List<ItemDefinition> startingItems = new List<ItemDefinition>();
 
     [Header("規則")]
-    [Tooltip("勾選 = 死亡後道具恢復成存檔當時 (A)\n取消 = 死亡後道具維持已消耗 (B)")]
+    [Tooltip("勾選 = 死亡後道具恢復成目前節點的快照 (A)\n取消 = 死亡後道具維持已消耗，並寫回目前節點的快照 (B)")]
     public bool restoreItemsOnDeath = true;
 
     /// <summary>除錯用：無敵。</summary>
@@ -39,7 +42,7 @@ public class GameManager : MonoBehaviour
     public event Action StateChanged;
 
     public IReadOnlyList<SavePoint> SavePoints => savePoints;
-    public string CurrentSavePointId => data.savePointId;
+    public string CurrentSavePointId => data.currentNodeId;
     public Inventory Inventory { get; private set; }
 
     readonly List<SavePoint> savePoints = new List<SavePoint>();
@@ -75,61 +78,75 @@ public class GameManager : MonoBehaviour
 
     void ApplySaveData()
     {
-        // 已撿走的道具
-        foreach (var pickup in FindObjectsByType<ItemPickup>(FindObjectsSortMode.None))
-            if (data.pickedUpIds.Contains(pickup.Id)) Destroy(pickup.gameObject);
-
-        // 存檔點狀態
+        // 節點狀態
         foreach (var sp in savePoints)
             sp.SetState(data.discoveredSavePoints.Contains(sp.Id), !data.disabledSavePoints.Contains(sp.Id));
 
         // 玩家位置
-        var spawnPoint = FindSavePoint(data.savePointId);
-        player.Teleport(spawnPoint != null ? spawnPoint.SpawnPosition : (Vector2)playerStart.position);
+        var node = FindSavePoint(data.currentNodeId);
+        player.Teleport(node != null ? node.SpawnPosition : (Vector2)playerStart.position);
 
-        // 物品欄：存檔裡沒有道具資料 = 新遊戲 → 發開局道具
-        if (data.items.Count == 0) Inventory.SetItems(startingItems);
-        else Inventory.ReadFrom(data);
+        // 物品欄：目前節點的快照；沒有 (新遊戲) → 發開局道具
+        var snapshot = node != null ? data.FindSnapshot(node.Id) : null;
+        if (snapshot == null || snapshot.items.Count == 0) Inventory.SetItems(startingItems);
+        else Inventory.ReadFrom(snapshot);
         StateChanged?.Invoke();
     }
 
     public SavePoint FindSavePoint(string id) => savePoints.Find(sp => sp.Id == id);
 
-    // ---------- 存檔點 ----------
+    /// <summary>節點的前後順序 (savePoints 已依 x 排序)；找不到回傳 -1。</summary>
+    int NodeOrder(string id) => savePoints.FindIndex(sp => sp.Id == id);
 
-    public void Discover(SavePoint sp)
-    {
-        if (data.discoveredSavePoints.Contains(sp.Id)) return;
-        data.discoveredSavePoints.Add(sp.Id);
-        sp.SetState(true, sp.IsActive);
-        StateChanged?.Invoke();
-    }
+    public bool HasSnapshot(SavePoint sp) => data.FindSnapshot(sp.Id) != null;
 
-    public void SaveAt(SavePoint sp)
+    // ---------- 節點 (自動存檔) ----------
+
+    /// <summary>玩家走進節點 (SavePoint 呼叫)。</summary>
+    public void EnterNode(SavePoint sp)
     {
-        if (!sp.IsActive) return;
-        Discover(sp);
-        data.savePointId = sp.Id;
-        Inventory.WriteTo(data);
+        if (dying || transitioning || !sp.IsActive || sp.Id == data.currentNodeId) return;
+
+        if (!data.discoveredSavePoints.Contains(sp.Id))
+        {
+            data.discoveredSavePoints.Add(sp.Id);
+            sp.SetState(true, sp.IsActive);
+        }
+
+        // 往前推進 (或這個節點還沒有快照) → 覆蓋快照；往回走 → 只更新重生點
+        bool forward = NodeOrder(sp.Id) > NodeOrder(data.currentNodeId) || !HasSnapshot(sp);
+        data.currentNodeId = sp.Id;
+        if (forward)
+        {
+            Inventory.WriteTo(data.GetOrCreateSnapshot(sp.Id));
+            // 新的時間線：這個節點之後的紀錄全部作廢 (打通前面的關卡 → 後面關卡的紀錄被覆蓋，不能再回溯過去)
+            int order = NodeOrder(sp.Id);
+            data.snapshots.RemoveAll(s => NodeOrder(s.nodeId) > order);
+        }
         SaveSystem.Save(SaveSystem.CurrentSlot, data);
-        ToastUI.Show("已存檔");
+        if (forward) ToastUI.Show("已存檔");
         StateChanged?.Invoke();
     }
 
-    /// <summary>停用 (消耗) 一個存檔點。預留給企劃的 trick 用，會立即寫入存檔。</summary>
+    /// <summary>可以從地圖回溯到這個節點嗎 (去過、沒被停用、有快照)。</summary>
+    public bool CanRewindTo(SavePoint sp) => sp.Discovered && sp.IsActive && HasSnapshot(sp);
+
+    /// <summary>回溯：重生點改成該節點 → 重載場景 (物品欄回到該節點的快照)。後面節點的快照先保留，等玩家往前推進到下一個節點時才作廢。</summary>
+    public void RewindTo(SavePoint sp)
+    {
+        if (!CanRewindTo(sp) || dying || transitioning) return;
+        data.currentNodeId = sp.Id;
+        SaveSystem.Save(SaveSystem.CurrentSlot, data);
+        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
+    }
+
+    /// <summary>停用 (消耗) 一個節點。預留給企劃的 trick 用，會立即寫入存檔。</summary>
     public void DisableSavePoint(SavePoint sp)
     {
         if (!data.disabledSavePoints.Contains(sp.Id)) data.disabledSavePoints.Add(sp.Id);
         sp.SetState(sp.Discovered, false);
         SaveSystem.Save(SaveSystem.CurrentSlot, data);
         StateChanged?.Invoke();
-    }
-
-    // ---------- 道具 ----------
-
-    public void MarkPickedUp(string pickupId)
-    {
-        if (!data.pickedUpIds.Contains(pickupId)) data.pickedUpIds.Add(pickupId);
     }
 
     // ---------- 死亡 / 轉場 ----------
@@ -147,9 +164,16 @@ public class GameManager : MonoBehaviour
         StartCoroutine(TransitionRoutine(position));
     }
 
+    /// <summary>鏡頭改跟隨 target (操控無人機時用)。</summary>
+    public void SetCameraTarget(Transform target)
+    {
+        if (vcam != null) vcam.Follow = target;
+    }
+
     IEnumerator TransitionRoutine(Vector2 position)
     {
         transitioning = true;
+        Drone.RemoveAll(); // 切換地圖：所有無人機消失
         GameInput.Locked = true;
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();
@@ -170,10 +194,10 @@ public class GameManager : MonoBehaviour
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();
 
-        if (!restoreItemsOnDeath)
+        if (!restoreItemsOnDeath && !string.IsNullOrEmpty(data.currentNodeId))
         {
-            // 規則 B：把目前 (已消耗的) 物品欄和撿過的道具寫回存檔，位置仍是最後存檔點
-            Inventory.WriteTo(data);
+            // 規則 B：把目前 (已消耗的) 物品欄寫回目前節點的快照，位置仍是目前節點
+            Inventory.WriteTo(data.GetOrCreateSnapshot(data.currentNodeId));
             SaveSystem.Save(SaveSystem.CurrentSlot, data);
         }
 

@@ -1,35 +1,33 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 門：任一個連到它的 PressurePlate 被壓著就打開 (關掉碰撞、外觀變半透明)。
-/// 要關門時如果門的位置有東西 (玩家、電池)，會等到淨空才關，不會夾住。
-/// 門要放在 Ground 圖層 (玩家可以站在上面、黑洞會貼上去)。美術之後可把 SetVisual 換成動畫。
+/// 門 / 橋。「關」= 有碰撞 (擋路 / 橋在)，「開」= 沒碰撞、半透明 (通行 / 橋消失)。
+/// 控制 (見 Activatable)：壓力板壓著 = 開；拉桿每拉一次翻轉 (startOpen 決定初始狀態，可做「A 開 B 關」的交替門)。
+/// 消失 (開) 是立即的，站在橋上的東西會掉下去；出現 (關) 時如果位置有東西 (玩家、電池)，會等淨空才出現，不會夾住。
+/// 橫放當橋：把 Scale X 拉長 (或轉 90 度) 即可。放在 Ground 圖層 (玩家可以站、黑洞會貼上去)。
 /// </summary>
-public class Door : MonoBehaviour
+public class Door : Activatable
 {
     [SerializeField] BoxCollider2D solid;
     [SerializeField] SpriteRenderer visual;
     [SerializeField] float openAlpha = 0.2f;
+    [Tooltip("初始是開的 (橋 = 一開始不存在)。只給拉桿控制的門用")]
+    [SerializeField] bool startOpen;
 
-    readonly HashSet<PressurePlate> pressedBy = new HashSet<PressurePlate>();
     readonly Collider2D[] overlap = new Collider2D[4];
-    bool wantOpen;
 
     public bool IsOpen => !solid.enabled;
 
-    public void SetPressed(PressurePlate plate, bool pressed)
+    void Awake()
     {
-        if (pressed) pressedBy.Add(plate);
-        else pressedBy.Remove(plate);
-        wantOpen = pressedBy.Count > 0;
-        if (wantOpen) SetOpen(true);
+        Active = startOpen;
+        SetOpen(startOpen);
     }
 
     void Update()
     {
-        // 想關門但還開著 → 淨空了才關
-        if (!wantOpen && IsOpen && !IsBlocked()) SetOpen(false);
+        if (Active && !IsOpen) SetOpen(true);
+        else if (!Active && IsOpen && !IsBlocked()) SetOpen(false); // 淨空了才出現
     }
 
     bool IsBlocked()
@@ -37,7 +35,7 @@ public class Door : MonoBehaviour
         var filter = new ContactFilter2D { useTriggers = false };
         Vector2 center = solid.transform.TransformPoint(solid.offset);
         Vector2 size = Vector2.Scale(solid.size, solid.transform.lossyScale) - Vector2.one * 0.1f; // 縮一點，避免碰到旁邊的地形
-        int n = Physics2D.OverlapBox(center, size, 0f, filter, overlap);
+        int n = Physics2D.OverlapBox(center, size, solid.transform.eulerAngles.z, filter, overlap);
         for (int i = 0; i < n; i++)
             if (overlap[i] != solid && overlap[i].GetComponent<UnityEngine.Tilemaps.TilemapCollider2D>() == null
                 && overlap[i].GetComponent<CompositeCollider2D>() == null) return true;

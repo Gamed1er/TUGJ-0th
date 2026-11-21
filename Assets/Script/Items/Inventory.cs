@@ -27,6 +27,8 @@ public class Inventory : MonoBehaviour
     ItemInstance[] slots;
 
     public event Action Changed;
+    /// <summary>鎖定時不能選格、切換、拖曳交換 (操控無人機時)。</summary>
+    public bool Locked { get; set; }
     public int SlotCount => slots.Length;
     public int Selected { get; private set; }
     public ItemInstance SelectedItem => slots[Selected];
@@ -48,7 +50,7 @@ public class Inventory : MonoBehaviour
 
     public void Select(int index)
     {
-        if (index < 0 || index >= slots.Length || index == Selected) return;
+        if (Locked || index < 0 || index >= slots.Length || index == Selected) return;
         Selected = index;
         Changed?.Invoke();
     }
@@ -56,7 +58,7 @@ public class Inventory : MonoBehaviour
     /// <summary>step = +1 下一格 / -1 上一格，會循環。</summary>
     public void Cycle(int step)
     {
-        if (step == 0) return;
+        if (Locked || step == 0) return;
         Select((Selected + step + slots.Length) % slots.Length);
     }
 
@@ -90,7 +92,7 @@ public class Inventory : MonoBehaviour
 
     public void Swap(int a, int b)
     {
-        if (a == b) return;
+        if (Locked || a == b) return;
         (slots[a], slots[b]) = (slots[b], slots[a]);
         // 選取框跟著被拖走的道具
         if (Selected == a) Selected = b;
@@ -110,7 +112,7 @@ public class Inventory : MonoBehaviour
 
     // ---------- 存讀檔 ----------
 
-    public void WriteTo(SaveData data)
+    public void WriteTo(NodeSnapshot data)
     {
         data.items.Clear();
         foreach (var s in slots)
@@ -118,7 +120,7 @@ public class Inventory : MonoBehaviour
         data.selectedSlot = Selected;
     }
 
-    public void ReadFrom(SaveData data)
+    public void ReadFrom(NodeSnapshot data)
     {
         Array.Clear(slots, 0, slots.Length);
         for (int i = 0; i < data.items.Count && i < slots.Length; i++)
