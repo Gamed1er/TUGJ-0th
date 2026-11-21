@@ -11,6 +11,8 @@ using UnityEngine.Tilemaps;
 /// - 進場時讀檔並套用 (玩家位置 = 目前節點、物品欄 = 目前節點的快照、節點狀態)
 /// - 自動存檔 (EnterNode)、地圖回溯 (RewindTo)
 /// - 死亡 → 淡出 → 重新載入場景 (= 回到目前節點的快照)
+/// - 通關 (ClearGame)：一周目 → 記錄電池位置、清空節點紀錄、從頭開始二周目
+/// - 二周目「請輸入文本」各區段的使用紀錄 (跟物品欄一起存進節點快照)
 /// 其他腳本透過 GameManager.Instance 呼叫。
 /// </summary>
 public class GameManager : MonoBehaviour
@@ -30,6 +32,8 @@ public class GameManager : MonoBehaviour
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
     public List<ItemDefinition> startingItems = new List<ItemDefinition>();
+    [Tooltip("二周目開局額外多的道具 (接在 startingItems 後面)")]
+    public List<ItemDefinition> secondLoopItems = new List<ItemDefinition>();
 
     [Header("規則")]
     [Tooltip("勾選 = 死亡後道具恢復成目前節點的快照 (A)\n取消 = 死亡後道具維持已消耗，並寫回目前節點的快照 (B)")]
@@ -44,8 +48,14 @@ public class GameManager : MonoBehaviour
     public IReadOnlyList<SavePoint> SavePoints => savePoints;
     public string CurrentSavePointId => data.currentNodeId;
     public Inventory Inventory { get; private set; }
+    /// <summary>第幾周目 (1 / 2)。</summary>
+    public int Loop => data.loop;
+    /// <summary>一周目通關時記錄的電池位置。</summary>
+    public IReadOnlyList<Vector2> BatteryRecords => data.batteryRecords;
 
     readonly List<SavePoint> savePoints = new List<SavePoint>();
+    /// <summary>目前這條時間線上已經用過「請輸入文本」的區段 (跟物品欄一起存進節點快照)。</summary>
+    readonly HashSet<string> recallUsedAreas = new HashSet<string>();
     SaveData data;
     bool dying;
     bool transitioning;
@@ -54,6 +64,7 @@ public class GameManager : MonoBehaviour
     {
         Instance = this;
         Inventory = player.GetComponent<Inventory>();
+        data = SaveSystem.Load(SaveSystem.CurrentSlot) ?? new SaveData(); // Awake 就讀，其他腳本的 Start 才拿得到 Loop 等資料
 
         var ids = new HashSet<string>();
         foreach (var sp in FindObjectsByType<SavePoint>(FindObjectsSortMode.None))
@@ -67,7 +78,6 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         GameInput.Locked = false;
-        data = SaveSystem.Load(SaveSystem.CurrentSlot) ?? new SaveData();
         ApplySaveData();
     }
 
@@ -88,9 +98,64 @@ public class GameManager : MonoBehaviour
 
         // 物品欄：目前節點的快照；沒有 (新遊戲) → 發開局道具
         var snapshot = node != null ? data.FindSnapshot(node.Id) : null;
-        if (snapshot == null || snapshot.items.Count == 0) Inventory.SetItems(startingItems);
+        if (snapshot == null || snapshot.items.Count == 0) Inventory.SetItems(StartingItemsForLoop());
         else Inventory.ReadFrom(snapshot);
+
+        recallUsedAreas.Clear();
+        if (snapshot != null) recallUsedAreas.UnionWith(snapshot.recallUsedAreas);
         StateChanged?.Invoke();
+    }
+
+    List<ItemDefinition> StartingItemsForLoop()
+    {
+        var list = new List<ItemDefinition>(startingItems);
+        if (data.loop >= 2) list.AddRange(secondLoopItems);
+        return list;
+    }
+
+    /// <summary>物品欄 + 請輸入文本的使用紀錄 → 寫進節點快照。</summary>
+    void WriteSnapshot(string nodeId)
+    {
+        var snapshot = data.GetOrCreateSnapshot(nodeId);
+        Inventory.WriteTo(snapshot);
+        snapshot.recallUsedAreas = new List<string>(recallUsedAreas);
+    }
+
+    // ---------- 二周目 ----------
+
+    public bool IsRecallUsed(MapArea area) => area != null && recallUsedAreas.Contains(area.Id);
+
+    public void MarkRecallUsed(MapArea area)
+    {
+        if (area != null) recallUsedAreas.Add(area.Id);
+    }
+
+    /// <summary>
+    /// 通關 (ClearGoal 呼叫)。一周目：記錄玩家生成的電池位置 → 清空所有節點紀錄 → 從頭開始二周目 (回不去一周目)。
+    /// 二周目：只顯示「通關」。
+    /// </summary>
+    public void ClearGame()
+    {
+        if (dying || transitioning) return;
+        if (data.loop >= 2)
+        {
+            ToastUI.Show("通關");
+            return;
+        }
+
+        data.batteryRecords.Clear();
+        foreach (var b in Battery.All)
+            if (b.SpawnedByPlayer) data.batteryRecords.Add(b.Body.position);
+
+        data.loop = 2;
+        data.currentNodeId = "";
+        data.snapshots.Clear();
+        data.discoveredSavePoints.Clear();
+        data.disabledSavePoints.Clear();
+        SaveSystem.Save(SaveSystem.CurrentSlot, data);
+        ToastUI.Show("一周目通關");
+        transitioning = true;
+        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     public SavePoint FindSavePoint(string id) => savePoints.Find(sp => sp.Id == id);
@@ -118,7 +183,7 @@ public class GameManager : MonoBehaviour
         data.currentNodeId = sp.Id;
         if (forward)
         {
-            Inventory.WriteTo(data.GetOrCreateSnapshot(sp.Id));
+            WriteSnapshot(sp.Id);
             // 新的時間線：這個節點之後的紀錄全部作廢 (打通前面的關卡 → 後面關卡的紀錄被覆蓋，不能再回溯過去)
             int order = NodeOrder(sp.Id);
             data.snapshots.RemoveAll(s => NodeOrder(s.nodeId) > order);
@@ -197,7 +262,7 @@ public class GameManager : MonoBehaviour
         if (!restoreItemsOnDeath && !string.IsNullOrEmpty(data.currentNodeId))
         {
             // 規則 B：把目前 (已消耗的) 物品欄寫回目前節點的快照，位置仍是目前節點
-            Inventory.WriteTo(data.GetOrCreateSnapshot(data.currentNodeId));
+            WriteSnapshot(data.currentNodeId);
             SaveSystem.Save(SaveSystem.CurrentSlot, data);
         }
 

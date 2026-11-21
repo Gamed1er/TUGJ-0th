@@ -9,6 +9,8 @@ using UnityEngine;
 /// 拉一次拉桿、或放下吊著的電池 → 立刻沒電 (不另外扣次數)。
 /// 跟玩家、電池永遠不碰撞；跟地形、門、平台會碰撞。切換地圖 / 死亡重載時全部消失。
 /// 操控的開始與結束 (鏡頭、物品欄鎖定) 在 BeginControl / EndControl。
+/// 吊著電池時玩家可以站在電池上 (會被帶著走)，連續站滿 crashTime 秒 → 放開電池並墜機 (= 沒電往下掉)。
+/// 外觀：待機 = openSprite、操控中 = 循環播 flyFrames、沒電 = closeSprite + 黑白材質。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
 public class Drone : MonoBehaviour
@@ -33,10 +35,21 @@ public class Drone : MonoBehaviour
     [Tooltip("吊著的電池相對於無人機的位置 (吊起時那裡被擋住，就維持電池原本的相對位置)")]
     public Vector2 carryOffset = new Vector2(0f, -0.8f);
 
+    [Header("墜機")]
+    [Tooltip("玩家站在吊著的電池上幾秒後墜機")]
+    public float crashTime = 1f;
+
     [Header("外觀 (美術可替換)")]
     public SpriteRenderer visual;
-    public Color poweredColor = new Color(0.3f, 0.9f, 1f);
-    public Color depletedColor = new Color(0.35f, 0.35f, 0.4f);
+    [Tooltip("有電、待機時的圖")]
+    public Sprite openSprite;
+    [Tooltip("操控中循環播放的圖")]
+    public Sprite[] flyFrames;
+    public float flyFrameTime = 0.08f;
+    [Tooltip("沒電時的圖")]
+    public Sprite closeSprite;
+    [Tooltip("沒電時套用的黑白材質")]
+    public Material grayscaleMaterial;
 
     public bool IsPowered { get; private set; } = true;
 
@@ -46,6 +59,9 @@ public class Drone : MonoBehaviour
     Battery carried;
     Vector2 carryLocal; // 這次吊起時實際使用的相對位置
     Vector2 lastPull;
+    float standTimer;   // 玩家站在吊著的電池上的時間
+    float animTimer;
+    Material normalMaterial;
     readonly List<Lever> nearLevers = new List<Lever>();
     readonly Collider2D[] overlap = new Collider2D[8];
     readonly RaycastHit2D[] hits = new RaycastHit2D[8];
@@ -56,6 +72,7 @@ public class Drone : MonoBehaviour
         col = GetComponent<Collider2D>();
         rb.gravityScale = 0f;
         area = MapArea.Find(transform.position);
+        if (visual != null) normalMaterial = visual.sharedMaterial;
         if (Powered != null) Powered.Deplete(); // 保險：永遠只有一台有電
         Powered = this;
         SetVisual();
@@ -140,6 +157,7 @@ public class Drone : MonoBehaviour
 
     void Update()
     {
+        Animate();
         if (Controlled != this) return;
 
         string prompt = null;
@@ -201,7 +219,48 @@ public class Drone : MonoBehaviour
         }
 
         rb.linearVelocity = v;
-        if (carried != null) carried.Body.MovePosition(rb.position + v * dt + carryLocal);
+        if (carried != null)
+        {
+            carried.Body.MovePosition(rb.position + v * dt + carryLocal);
+            CarryRider(v * dt);
+        }
+        else standTimer = 0f;
+    }
+
+    /// <summary>玩家站在吊著的電池上：跟著水平移動；站滿 crashTime 秒 → 墜機。</summary>
+    void CarryRider(Vector2 delta)
+    {
+        var player = GameManager.Instance != null ? GameManager.Instance.player : null;
+        if (player == null || !StandingOnCarried(player))
+        {
+            standTimer = 0f;
+            return;
+        }
+
+        // 水平跟著走 (垂直由物理推動 / 玩家的地面吸附處理)；前面有牆就不帶
+        if (delta.x != 0f)
+        {
+            var filter = new ContactFilter2D { useTriggers = false };
+            filter.SetLayerMask(player.groundMask);
+            var dir = new Vector2(Mathf.Sign(delta.x), 0f);
+            if (player.Body.Cast(dir, filter, hits, Mathf.Abs(delta.x) + 0.02f) == 0)
+                player.Body.position += new Vector2(delta.x, 0f);
+        }
+
+        standTimer += Time.fixedDeltaTime;
+        if (standTimer >= crashTime) Deplete(); // 放開電池、往下掉
+    }
+
+    /// <summary>玩家是不是踩在吊著的電池頂面上。</summary>
+    bool StandingOnCarried(PlayerController player)
+    {
+        if (!player.IsGrounded) return false;
+        Bounds b = carried.Collider.bounds;
+        var filter = new ContactFilter2D { useTriggers = false };
+        int n = Physics2D.OverlapBox(new Vector2(b.center.x, b.max.y + 0.05f), new Vector2(b.size.x - 0.05f, 0.1f), 0f, filter, overlap);
+        for (int i = 0; i < n; i++)
+            if (overlap[i].attachedRigidbody == player.Body) return true;
+        return false;
     }
 
     bool CarriedBlocked(Vector2 dir, float distance)
@@ -296,6 +355,27 @@ public class Drone : MonoBehaviour
 
     void SetVisual()
     {
-        if (visual != null) visual.color = IsPowered ? poweredColor : depletedColor;
+        if (visual == null) return;
+        visual.sharedMaterial = IsPowered || grayscaleMaterial == null ? normalMaterial : grayscaleMaterial;
+        Animate();
+    }
+
+    void Animate()
+    {
+        if (visual == null) return;
+        if (!IsPowered)
+        {
+            if (closeSprite != null) visual.sprite = closeSprite;
+        }
+        else if (Controlled == this && flyFrames != null && flyFrames.Length > 0)
+        {
+            animTimer += Time.deltaTime;
+            visual.sprite = flyFrames[(int)(animTimer / flyFrameTime) % flyFrames.Length];
+        }
+        else if (openSprite != null)
+        {
+            animTimer = 0f;
+            visual.sprite = openSprite;
+        }
     }
 }
