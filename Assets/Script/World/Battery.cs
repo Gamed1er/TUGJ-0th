@@ -220,7 +220,7 @@ public class Battery : MonoBehaviour
             rb.linearVelocity = Vector2.zero;
         }
 
-        Vector2 pull = BlackHole.SamplePull(rb.position, out float s);
+        Vector2 pull = BlackHole.SamplePull(rb.position, BlackHole.PullTarget.Object, out float s);
         // 越靠近黑洞重力越小，原本的速度也被抵銷 → 會被吸過去並停在黑洞附近
         rb.gravityScale = baseGravity * (1f - s);
 

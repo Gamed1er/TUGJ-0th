@@ -302,7 +302,7 @@ public class Drone : MonoBehaviour
     void DepletedMove()
     {
         // 跟電池一樣：越靠近黑洞重力越小，原本的速度也被抵銷
-        Vector2 pull = BlackHole.SamplePull(rb.position, out float s);
+        Vector2 pull = BlackHole.SamplePull(rb.position, BlackHole.PullTarget.Object, out float s);
         rb.gravityScale = fallGravity * (1f - s);
         Vector2 own = rb.linearVelocity - lastPull;
         own = Vector2.MoveTowards(own, Vector2.zero, s * BlackHole.Damping * Time.fixedDeltaTime);
