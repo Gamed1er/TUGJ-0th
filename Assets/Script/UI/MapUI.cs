@@ -70,7 +70,10 @@ public class MapUI : MonoBehaviour
         if (!gm.CanRewindTo(node.SavePoint))
         {
             selected = null;
-            SetHint(node.SavePoint.Discovered ? "這個節點無法回溯" : "還沒去過這個節點");
+            var sp = node.SavePoint;
+            SetHint(!sp.Discovered ? "還沒去過這個節點"
+                  : !sp.IsActive ? "這個節點無法回溯"
+                  : "這個節點的紀錄已被覆蓋 (打通了前面的關卡)");
         }
         else if (selected == node)
         {
@@ -92,8 +95,9 @@ public class MapUI : MonoBehaviour
 
     void Refresh()
     {
-        string current = GameManager.Instance.CurrentSavePointId;
-        foreach (var n in nodes) n.Refresh(current, n == selected);
+        var gm = GameManager.Instance;
+        string current = gm.CurrentSavePointId;
+        foreach (var n in nodes) n.Refresh(current, n == selected, gm.HasSnapshot(n.SavePoint));
     }
 
     /// <summary>世界座標 → nodeArea 內的座標 (保持長寬比、置中)。nodeArea 的 pivot 需為 (0.5, 0.5)。</summary>

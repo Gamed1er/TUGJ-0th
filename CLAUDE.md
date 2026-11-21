@@ -11,11 +11,12 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 ## 架構 (Assets/Script)
 - **Core**：`GameManager` 是遊戲場景的總管 (讀檔套用、存檔、死亡重載、地圖轉場 `TransitionTo`)；`GameInput` 集中所有按鍵綁定，改鍵位只改這裡。
 - **Items**：`ItemDefinition` (ScriptableObject) 定義道具，右鍵生命週期是 `OnUseStart` → `OnUseHold` → `OnUseEnd`，由 `PlayerItemUser` 呼叫。`Inventory` 是純資料，UI 監聽 `Changed`。
-- **Save**：`SaveData` 是一個存檔欄位的 JSON 內容，存在 PlayerPrefs，共 3 個欄位。每個節點 (`SavePoint`) 各有一份快照 (物品欄)，`currentNodeId` 是重生點。往前推進到節點才覆蓋快照，往回走只改重生點；地圖 (M) 點節點兩次可回溯。改格式要把 `SaveData.CurrentVersion` +1。
+- **Save**：`SaveData` 是一個存檔欄位的 JSON 內容，存在 PlayerPrefs，共 3 個欄位。每個節點 (`SavePoint`) 各有一份快照 (物品欄)，`currentNodeId` 是重生點。往前推進到節點才覆蓋快照，並刪掉它後面所有節點的快照 (新時間線，後面的關卡不能再回溯)；往回走只改重生點；地圖 (M) 點節點兩次可回溯。改格式要把 `SaveData.CurrentVersion` +1。
 - **World**：節點 (隱形自動存檔)、致死區、MapArea/MapEdge (地圖分區與左右轉場)、黑洞、電池、壓力板、拉桿、門 (橫放 = 橋)、軌道平台、無人機、可破壞物件。
   - **機關**：門和軌道平台繼承 `Activatable`，拉桿 / 壓力板的 `targets` 連到它們 (壓著 = 啟動，拉桿 = 翻轉)。新機關也繼承它。
   - **無人機**：`Drone.Powered` (有電的那台，最多一台)、`Drone.Controlled` (操控中)。操控時玩家不吃移動 / E 輸入 (`PlayerController.MoveInput`)、`Inventory.Locked`、鏡頭改跟無人機 (`GameManager.SetCameraTarget`)，右鍵退出由 `PlayerItemUser` 處理。跟玩家、電池的碰撞用 `Physics2D.IgnoreCollision` 關掉 (`Drone.All` / `Battery.All`)。
-  - **軌道平台**：`MovingPlatform` 自己搬動站在上面的東西和被推的東西，推不動 → 玩家死亡、其他東西摧毀。
+  - **軌道平台**：`MovingPlatform` 自己搬動站在上面的東西和被推的東西，推不動 → 玩家死亡、電池爆炸、無人機摧毀。
+  - **電池爆炸**：`Battery.Explode` (火箭尾氣 `PlayerRocket.exhaustSize` 範圍、平台擠壓觸發)。範圍內的電池延遲 `chainDelay` 連鎖爆炸；玩家用 `PlayerController.AddKnockback` (外力速度，跟黑洞拉力一起疊加、`knockbackTime` 內衰減)，沒電的無人機直接加速度。不傷害玩家、不破壞方塊。
 - **Player**：`PlayerController` 移動跳躍；`PlayerAnimator` 直接換 sprite 播逐格動畫 (不用 Animator)，圖來自 `Assets/Art/protagnist/pro-Sheet.png` (4 格 50x40，PPU 24)；`PlayerRocket` 火箭狀態與噴射粒子。
 - **特效**：Unity ParticleSystem，共用材質 `Assets/Art/Placeholder/Particle.mat` (URP 2D Sprite-Unlit + 圓形貼圖)。火箭 = Player 的 `ThrustFx`，黑洞 = BlackHole 的 `PullFx`。
 - **UI**：uGUI 的 legacy `Text`。

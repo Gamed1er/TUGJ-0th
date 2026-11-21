@@ -28,13 +28,14 @@ public class MapNodeUI : MonoBehaviour, IPointerClickHandler
         this.onClick = onClick;
     }
 
-    public void Refresh(string currentSavePointId, bool selected)
+    /// <param name="hasRecord">這個節點還有紀錄 (可回溯)。去過但紀錄被覆蓋的節點顯示名稱、但用灰色。</param>
+    public void Refresh(string currentSavePointId, bool selected, bool hasRecord)
     {
         bool discovered = SavePoint.Discovered;
         label.text = discovered ? SavePoint.DisplayName : "???";
         dot.color = !SavePoint.IsActive ? disabledColor
                   : SavePoint.Id == currentSavePointId ? currentColor
-                  : discovered ? discoveredColor
+                  : discovered && hasRecord ? discoveredColor
                   : undiscoveredColor;
         transform.localScale = Vector3.one * (selected ? selectedScale : 1f);
     }
