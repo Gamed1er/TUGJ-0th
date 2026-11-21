@@ -1,14 +1,16 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
-/// 拉桿：站在範圍內按 E → doors 裡的每扇門各自翻轉開關 (Door.Toggle)。
+/// 拉桿：玩家站在範圍內按 E (或無人機飛到旁邊按 E) → targets 裡的每個機關各自翻轉 (Activatable.Toggle)。
 /// 不存檔：死亡 / 讀檔後回到初始狀態。需要一個 isTrigger 的 Collider2D 當互動範圍。
-/// 連到拉桿的門不要再接壓力板。
+/// 連到拉桿的機關不要再接壓力板。
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class Lever : MonoBehaviour, IInteractable
 {
-    [SerializeField] Door[] doors;
+    [FormerlySerializedAs("doors")]
+    [SerializeField] Activatable[] targets;
 
     [Header("外觀 (美術可替換)")]
     [Tooltip("拉桿的把手，拉下時左右翻轉")]
@@ -22,10 +24,13 @@ public class Lever : MonoBehaviour, IInteractable
 
     public string GetPrompt(PlayerInteractor who) => "E 拉桿";
 
-    public void Interact(PlayerInteractor who)
+    public void Interact(PlayerInteractor who) => Pull();
+
+    /// <summary>切換拉桿 (玩家、無人機共用)。</summary>
+    public void Pull()
     {
         on = !on;
-        foreach (var d in doors) if (d != null) d.Toggle();
+        foreach (var t in targets) if (t != null) t.Toggle();
         RefreshVisual();
     }
 
@@ -40,8 +45,8 @@ public class Lever : MonoBehaviour, IInteractable
 
     void OnDrawGizmos()
     {
-        if (doors == null) return;
+        if (targets == null) return;
         Gizmos.color = Color.yellow;
-        foreach (var d in doors) if (d != null) Gizmos.DrawLine(transform.position, d.transform.position);
+        foreach (var t in targets) if (t != null) Gizmos.DrawLine(transform.position, t.transform.position);
     }
 }

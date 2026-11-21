@@ -14,12 +14,17 @@ public class InventorySlotUI : MonoBehaviour,
     [SerializeField] Color emptyIconColor = new Color(0.4f, 0.4f, 0.4f, 0.6f);
     [SerializeField] Text keyText;
     [SerializeField] GameObject selectedFrame;
+    [Tooltip("格子底色。無人機道具在場上有有電的無人機時變成 droneActiveColor")]
+    [SerializeField] Image background;
+    [SerializeField] Color droneActiveColor = new Color(0.1f, 0.55f, 0.65f, 0.9f);
 
     InventoryUI owner;
     int index;
     Transform iconParent;
     int iconSiblingIndex;
     Canvas rootCanvas;
+    ItemInstance item;
+    Color normalBackground;
 
     public void Init(InventoryUI owner, int index)
     {
@@ -27,10 +32,19 @@ public class InventorySlotUI : MonoBehaviour,
         this.index = index;
         keyText.text = (index + 1).ToString();
         rootCanvas = GetComponentInParent<Canvas>().rootCanvas;
+        if (background != null) normalBackground = background.color;
+    }
+
+    void Update()
+    {
+        if (background == null) return;
+        bool droneActive = item != null && item.definition is DroneItem && Drone.Powered != null;
+        background.color = droneActive ? droneActiveColor : normalBackground;
     }
 
     public void Refresh(ItemInstance item, bool selected)
     {
+        this.item = item;
         selectedFrame.SetActive(selected);
         bool has = item != null;
         icon.enabled = has;

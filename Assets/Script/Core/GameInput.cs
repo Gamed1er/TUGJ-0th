@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 /// </summary>
 public static class GameInput
 {
-    static InputAction move, jump, interact, use, map, scroll;
+    static InputAction move, vertical, jump, interact, use, map, scroll;
     static bool initialized;
 
     /// <summary>
@@ -18,7 +18,7 @@ public static class GameInput
     static void ResetStatics()
     {
         if (initialized)
-            foreach (var a in new[] { move, jump, interact, use, map, scroll }) a?.Dispose();
+            foreach (var a in new[] { move, vertical, jump, interact, use, map, scroll }) a?.Dispose();
         initialized = false;
         Locked = false;
     }
@@ -34,6 +34,13 @@ public static class GameInput
         move.AddCompositeBinding("1DAxis")
             .With("Negative", "<Keyboard>/leftArrow").With("Positive", "<Keyboard>/rightArrow");
 
+        // 垂直軸 (無人機上下飛用)。W / ↑ 同時也是跳躍鍵，操控無人機時玩家不吃輸入所以不衝突
+        vertical = new InputAction("Vertical", InputActionType.Value);
+        vertical.AddCompositeBinding("1DAxis")
+            .With("Negative", "<Keyboard>/s").With("Positive", "<Keyboard>/w");
+        vertical.AddCompositeBinding("1DAxis")
+            .With("Negative", "<Keyboard>/downArrow").With("Positive", "<Keyboard>/upArrow");
+
         jump = new InputAction("Jump", InputActionType.Button);
         jump.AddBinding("<Keyboard>/space");
         jump.AddBinding("<Keyboard>/w");
@@ -44,13 +51,14 @@ public static class GameInput
         map = new InputAction("Map", InputActionType.Button, "<Keyboard>/m");
         scroll = new InputAction("Scroll", InputActionType.Value, "<Mouse>/scroll/y");
 
-        move.Enable(); jump.Enable(); interact.Enable(); use.Enable(); map.Enable(); scroll.Enable();
+        move.Enable(); vertical.Enable(); jump.Enable(); interact.Enable(); use.Enable(); map.Enable(); scroll.Enable();
     }
 
     /// <summary>暫停玩家輸入 (死亡、轉場時)。UI 仍可用滑鼠操作。</summary>
     public static bool Locked { get; set; }
 
     public static float Move { get { Init(); return Locked ? 0f : move.ReadValue<float>(); } }
+    public static float Vertical { get { Init(); return Locked ? 0f : vertical.ReadValue<float>(); } }
     public static bool JumpPressed { get { Init(); return !Locked && jump.WasPressedThisFrame(); } }
     public static bool JumpHeld { get { Init(); return !Locked && jump.IsPressed(); } }
     public static bool InteractPressed { get { Init(); return !Locked && interact.WasPressedThisFrame(); } }

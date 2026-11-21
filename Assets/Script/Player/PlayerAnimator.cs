@@ -24,7 +24,7 @@ public class PlayerAnimator : MonoBehaviour
     {
         if (sprite == null) return;
 
-        bool walking = player.IsGrounded && Mathf.Abs(GameInput.Move) > 0.01f && walkFrames != null && walkFrames.Length > 0;
+        bool walking = player.IsGrounded && Mathf.Abs(player.MoveInput) > 0.01f && walkFrames != null && walkFrames.Length > 0;
         if (!walking)
         {
             timer = 0f;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.Tilemaps;
@@ -23,6 +24,8 @@ public class GameManager : MonoBehaviour
     [Tooltip("地圖 UI 用來計算世界範圍的 Tilemap")]
     public Tilemap boundsTilemap;
     public ScreenFader fader;
+    [Tooltip("跟隨玩家的鏡頭 (操控無人機時改跟無人機)")]
+    public CinemachineCamera vcam;
 
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
@@ -155,9 +158,16 @@ public class GameManager : MonoBehaviour
         StartCoroutine(TransitionRoutine(position));
     }
 
+    /// <summary>鏡頭改跟隨 target (操控無人機時用)。</summary>
+    public void SetCameraTarget(Transform target)
+    {
+        if (vcam != null) vcam.Follow = target;
+    }
+
     IEnumerator TransitionRoutine(Vector2 position)
     {
         transitioning = true;
+        Drone.RemoveAll(); // 切換地圖：所有無人機消失
         GameInput.Locked = true;
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();

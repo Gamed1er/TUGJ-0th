@@ -1,15 +1,12 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
 /// 門 / 橋。「關」= 有碰撞 (擋路 / 橋在)，「開」= 沒碰撞、半透明 (通行 / 橋消失)。
-/// 控制來源二選一 (不要混用)：
-/// - PressurePlate：任一塊板被壓著就開，全部放開就關
-/// - Lever：每拉一次，開關狀態翻轉 (startOpen 決定初始狀態，可做「A 開 B 關」的交替門)
+/// 控制 (見 Activatable)：壓力板壓著 = 開；拉桿每拉一次翻轉 (startOpen 決定初始狀態，可做「A 開 B 關」的交替門)。
 /// 消失 (開) 是立即的，站在橋上的東西會掉下去；出現 (關) 時如果位置有東西 (玩家、電池)，會等淨空才出現，不會夾住。
 /// 橫放當橋：把 Scale X 拉長 (或轉 90 度) 即可。放在 Ground 圖層 (玩家可以站、黑洞會貼上去)。
 /// </summary>
-public class Door : MonoBehaviour
+public class Door : Activatable
 {
     [SerializeField] BoxCollider2D solid;
     [SerializeField] SpriteRenderer visual;
@@ -17,33 +14,20 @@ public class Door : MonoBehaviour
     [Tooltip("初始是開的 (橋 = 一開始不存在)。只給拉桿控制的門用")]
     [SerializeField] bool startOpen;
 
-    readonly HashSet<PressurePlate> pressedBy = new HashSet<PressurePlate>();
     readonly Collider2D[] overlap = new Collider2D[4];
-    bool wantOpen;
 
     public bool IsOpen => !solid.enabled;
 
     void Awake()
     {
-        wantOpen = startOpen;
+        Active = startOpen;
         SetOpen(startOpen);
     }
 
-    /// <summary>壓力板呼叫。</summary>
-    public void SetPressed(PressurePlate plate, bool pressed)
-    {
-        if (pressed) pressedBy.Add(plate);
-        else pressedBy.Remove(plate);
-        wantOpen = pressedBy.Count > 0;
-    }
-
-    /// <summary>拉桿呼叫：翻轉開關。</summary>
-    public void Toggle() => wantOpen = !wantOpen;
-
     void Update()
     {
-        if (wantOpen && !IsOpen) SetOpen(true);
-        else if (!wantOpen && IsOpen && !IsBlocked()) SetOpen(false); // 淨空了才出現
+        if (Active && !IsOpen) SetOpen(true);
+        else if (!Active && IsOpen && !IsBlocked()) SetOpen(false); // 淨空了才出現
     }
 
     bool IsBlocked()

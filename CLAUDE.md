@@ -12,7 +12,10 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - **Core**：`GameManager` 是遊戲場景的總管 (讀檔套用、存檔、死亡重載、地圖轉場 `TransitionTo`)；`GameInput` 集中所有按鍵綁定，改鍵位只改這裡。
 - **Items**：`ItemDefinition` (ScriptableObject) 定義道具，右鍵生命週期是 `OnUseStart` → `OnUseHold` → `OnUseEnd`，由 `PlayerItemUser` 呼叫。`Inventory` 是純資料，UI 監聽 `Changed`。
 - **Save**：`SaveData` 是一個存檔欄位的 JSON 內容，存在 PlayerPrefs，共 3 個欄位。每個節點 (`SavePoint`) 各有一份快照 (物品欄)，`currentNodeId` 是重生點。往前推進到節點才覆蓋快照，往回走只改重生點；地圖 (M) 點節點兩次可回溯。改格式要把 `SaveData.CurrentVersion` +1。
-- **World**：節點 (隱形自動存檔)、致死區、MapArea/MapEdge (地圖分區與左右轉場)、黑洞、電池、壓力板、拉桿、門 (橫放 = 橋)、可破壞物件。
+- **World**：節點 (隱形自動存檔)、致死區、MapArea/MapEdge (地圖分區與左右轉場)、黑洞、電池、壓力板、拉桿、門 (橫放 = 橋)、軌道平台、無人機、可破壞物件。
+  - **機關**：門和軌道平台繼承 `Activatable`，拉桿 / 壓力板的 `targets` 連到它們 (壓著 = 啟動，拉桿 = 翻轉)。新機關也繼承它。
+  - **無人機**：`Drone.Powered` (有電的那台，最多一台)、`Drone.Controlled` (操控中)。操控時玩家不吃移動 / E 輸入 (`PlayerController.MoveInput`)、`Inventory.Locked`、鏡頭改跟無人機 (`GameManager.SetCameraTarget`)，右鍵退出由 `PlayerItemUser` 處理。跟玩家、電池的碰撞用 `Physics2D.IgnoreCollision` 關掉 (`Drone.All` / `Battery.All`)。
+  - **軌道平台**：`MovingPlatform` 自己搬動站在上面的東西和被推的東西，推不動 → 玩家死亡、其他東西摧毀。
 - **Player**：`PlayerController` 移動跳躍；`PlayerAnimator` 直接換 sprite 播逐格動畫 (不用 Animator)，圖來自 `Assets/Art/protagnist/pro-Sheet.png` (4 格 50x40，PPU 24)；`PlayerRocket` 火箭狀態與噴射粒子。
 - **特效**：Unity ParticleSystem，共用材質 `Assets/Art/Placeholder/Particle.mat` (URP 2D Sprite-Unlit + 圓形貼圖)。火箭 = Player 的 `ThrustFx`，黑洞 = BlackHole 的 `PullFx`。
 - **UI**：uGUI 的 legacy `Text`。
@@ -22,7 +25,7 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - **新道具**：繼承 `ItemDefinition`。成功時呼叫 `ctx.Consume()`，用 `ctx.CheckUses()` 擋掉次數為 0 的情況。資產放在 `Assets/Resources/Items/` (讀檔靠 id 找)，要開局就有的話加進 GameManager 的 `startingItems`。
 - **提示訊息**：道具相關 (名稱、失敗原因) 用 `ItemStatusUI.Hint`；系統訊息 (已存檔) 用 `ToastUI.Show`。
 - **次數規則**：次數用完道具留在格子裡，顯示 0、圖示變灰。
-- **地圖狀態不存檔**：電池、門、拉桿、可破壞物件在死亡重載後都會重置。遊戲沒有撿道具要素。
+- **地圖狀態不存檔**：電池、門、拉桿、平台、無人機、可破壞物件在死亡重載後都會重置；切換地圖時無人機全部消失。遊戲沒有撿道具要素。
 - **圖層**：Ground (layer 8) 放地形、電池、門、可破壞物件，也就是玩家能站、黑洞會貼上去的東西。觸發區用 layer 2 (Ignore Raycast)。
 - **static 必須自己重置**：專案關閉了 Domain Reload，static 會延續到下一次 Play。新的 static 要在 `OnDestroy` 清掉，或用 `[RuntimeInitializeOnLoadMethod(SubsystemRegistration)]` 重置，參考 `GameInput.ResetStatics`。
 - **ID**：複製節點 (SavePoint) 後，要在 Inspector 執行 Regenerate ID。
