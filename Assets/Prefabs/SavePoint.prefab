@@ -91,6 +91,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b92b05e311fc92448398183c484ea2f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SavePoint
-  id: save_d5332f64
+  id: save_a2c66df4
   displayName: "\u7BC0\u9EDE"
   spawnOffset: {x: 0, y: 0.8}

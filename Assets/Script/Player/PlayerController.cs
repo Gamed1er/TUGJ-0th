@@ -38,6 +38,10 @@ public class PlayerController : MonoBehaviour
     public bool IsFlying { get; private set; }
     public int Facing { get; private set; } = 1;
     public Rigidbody2D Body => rb;
+    /// <summary>玩家自己的左右輸入 (操控無人機時為 0)。</summary>
+    public float MoveInput => Drone.Controlled != null ? 0f : GameInput.Move;
+    bool JumpPressedInput => Drone.Controlled == null && GameInput.JumpPressed;
+    bool JumpHeldInput => Drone.Controlled == null && GameInput.JumpHeld;
 
     Rigidbody2D rb;
     CapsuleCollider2D col;
@@ -64,9 +68,9 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (GameInput.JumpPressed) lastJumpPressedTime = Time.time;
+        if (JumpPressedInput) lastJumpPressedTime = Time.time;
 
-        float x = GameInput.Move;
+        float x = MoveInput;
         if (x > 0.01f) Facing = 1;
         else if (x < -0.01f) Facing = -1;
         if (sprite != null) sprite.flipX = Facing < 0;
@@ -74,7 +78,7 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        float x = GameInput.Move;
+        float x = MoveInput;
         Vector2 pull = BlackHole.SamplePull(rb.position, out float pullStrength);
 
         // 火箭飛行：沒有重力、垂直速度固定，左右照常
@@ -117,7 +121,7 @@ public class PlayerController : MonoBehaviour
             ownY = Mathf.MoveTowards(ownY, 0f, pullStrength * BlackHole.Damping * Time.fixedDeltaTime);
 
             // 小跳：上升中放開跳躍鍵
-            if (jumping && !jumpCutDone && ownY > 0f && !GameInput.JumpHeld)
+            if (jumping && !jumpCutDone && ownY > 0f && !JumpHeldInput)
             {
                 ownY *= jumpCutMultiplier;
                 jumpCutDone = true;
