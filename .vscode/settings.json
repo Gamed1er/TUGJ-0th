@@ -63,5 +63,5 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "TUGJ-0th.slnx"
+    "dotnet.defaultSolution": "TUGJ0th.slnx"
 }
