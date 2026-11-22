@@ -157,7 +157,8 @@ public class PlayerController : MonoBehaviour
         Battery battery = groundBody != null ? groundBody.GetComponentInParent<Battery>() : null;
         if (battery != null && battery.IsCarried) battery = null; // 吊著的由 Drone.CarryRider 處理
         float vx = 0f;
-        if (battery != null && battery == carrier)
+        // 被炸飛中不跟著腳下的電池走：電池也被同一個擊退推著 (Knockback.Apply 疊著的同一組)，再加一次會變兩倍
+        if (battery != null && battery == carrier && knock == Vector2.zero)
             vx = (battery.Body.position.x - carrierLastPos.x) / Time.fixedDeltaTime;
         carrier = battery;
         if (battery != null) carrierLastPos = battery.Body.position;

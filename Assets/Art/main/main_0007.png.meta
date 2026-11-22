@@ -1,19 +1,10 @@
 fileFormatVersion: 2
-guid: 536a3e7ad59550344b0d0cda828e1707
+guid: dea1d190ab777684d88aaa9b407301f8
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3468660296489629569
-    second: gun1-walk - -Sheet_0
-  - first:
-      213: -1191137386749452959
-    second: gun1-walk - -Sheet_1
-  - first:
-      213: 9186287244755245173
-    second: gun1-walk - -Sheet_2
-  - first:
-      213: 8610024012431327333
-    second: gun1-walk - -Sheet_3
+      213: 7372849178519951671
+    second: main_0007_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -55,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -84,7 +75,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -122,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: gun1-walk - -Sheet_0
+      name: main_0007_0
       rect:
         serializedVersion: 2
-        x: 13
+        x: 0
         y: 0
-        width: 22
-        height: 35
+        width: 288
+        height: 162
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -137,74 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 187f3c27928232030800000000000000
-      internalID: 3468660296489629569
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: gun1-walk - -Sheet_1
-      rect:
-        serializedVersion: 2
-        x: 63
-        y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 16d9c109bda387fe0800000000000000
-      internalID: -1191137386749452959
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: gun1-walk - -Sheet_2
-      rect:
-        serializedVersion: 2
-        x: 113
-        y: 0
-        width: 22
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 578965cf39f3c7f70800000000000000
-      internalID: 9186287244755245173
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: gun1-walk - -Sheet_3
-      rect:
-        serializedVersion: 2
-        x: 163
-        y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 5608d80b833fc7770800000000000000
-      internalID: 8610024012431327333
+      spriteID: 739563cc34f915660800000000000000
+      internalID: 7372849178519951671
       vertices: []
       indices: 
       edges: []
@@ -213,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -223,10 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      gun1-walk - -Sheet_0: 3468660296489629569
-      gun1-walk - -Sheet_1: -1191137386749452959
-      gun1-walk - -Sheet_2: 9186287244755245173
-      gun1-walk - -Sheet_3: 8610024012431327333
+      main_0007_0: 7372849178519951671
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

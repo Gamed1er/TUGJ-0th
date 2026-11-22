@@ -1,35 +1,122 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 標題畫面：3 個按鈕 = 新的存檔 / save1 (一周目自動存檔) / save2 (二周目自動存檔)。
-/// slots 的順序就是這 3 個 (TitleSlotUI.Kind 由索引決定)。
+/// 標題畫面：背景循環播 main 動畫 (UIFrameAnimation)，下方閃爍「Click to start」。
+/// 點擊任意位置 (或 Enter / Space) → 彈出終端機風格的存檔視窗 (TerminalMenu)：
+///   new save (已有存檔要按兩次，清掉 save1、save2 從一周目開始) / save1 / save2 (存在才能選)。
+/// 視窗右上角 × 或 Esc 關閉，回到動畫。
 /// </summary>
 public class TitleMenu : MonoBehaviour
 {
-    [SerializeField] TitleSlotUI[] slots;
     [SerializeField] ScreenFader fader;
+    [Tooltip("閃爍的「Click to start」")]
+    [SerializeField] GameObject clickHint;
+    [SerializeField] float blinkRate = 1.2f;
 
+    [Header("存檔視窗")]
+    [SerializeField] GameObject popup;
+    [SerializeField] RectTransform column;
+    [Tooltip("沒指定就用內建字型")]
+    [SerializeField] Font font;
+    [SerializeField] int fontSize = 34;
+    [SerializeField] float rowHeight = 52f;
+    [SerializeField] Color normalColor = new Color(0.3f, 1f, 0.4f);
+    [Tooltip("不能選的行 (沒有存檔)")]
+    [SerializeField] Color dimColor = new Color(0.15f, 0.45f, 0.2f);
+    [Tooltip("new save 確認中")]
+    [SerializeField] Color warnColor = new Color(1f, 0.25f, 0.2f);
+
+    TerminalMenu menu;
+    bool confirmingNew;
     bool loading;
+    float blinkTime;
+    int closedFrame = -1; // 按 × 關閉的那一幀不能又被當成「點擊開始」
+
+    bool PopupOpen => popup.activeSelf;
 
     void Start()
     {
         GameInput.Locked = false;
         Time.timeScale = 1f;
-        for (int i = 0; i < slots.Length; i++) slots[i].Init(this, i);
+        menu = new TerminalMenu(font, fontSize, rowHeight, column);
+        popup.SetActive(false);
     }
 
-    /// <summary>新的存檔：清掉 save1、save2，從一周目開頭開始。</summary>
-    public void NewGame()
+    void Update()
     {
+        if (loading) return;
+        if (!PopupOpen)
+        {
+            blinkTime += Time.unscaledDeltaTime;
+            if (clickHint != null) clickHint.SetActive(Mathf.Repeat(blinkTime * blinkRate, 1f) < 0.6f);
+            if (StartPressed() && Time.frameCount != closedFrame) Open();
+            return;
+        }
+        if (GameInput.CancelPressed) { Close(); return; }
+        menu.HandleInput();
+    }
+
+    static bool StartPressed()
+    {
+        var kb = Keyboard.current;
+        return (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            || (kb != null && (kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame));
+    }
+
+    void Open()
+    {
+        popup.SetActive(true);
+        if (clickHint != null) clickHint.SetActive(false);
+        confirmingNew = false;
+        menu.ForgetSelection();
+        Rebuild();
+    }
+
+    /// <summary>右上角的 × 按鈕呼叫。</summary>
+    public void Close()
+    {
+        if (loading) return;
+        popup.SetActive(false);
+        closedFrame = Time.frameCount;
+    }
+
+    void Rebuild()
+    {
+        menu.Clear();
+        menu.Add(0, "== select save ==", normalColor, bold: true);
+        var first = menu.Add(0, confirmingNew ? "new save  (press again: clears save1 / save2)" : "new save",
+                             confirmingNew ? warnColor : normalColor, NewGame);
+        AddSaveRow(SaveSystem.Save1, "save1  loop 1");
+        AddSaveRow(SaveSystem.Save2, "save2  loop 2");
+        menu.EndBuild(first);
+    }
+
+    void AddSaveRow(int slot, string name)
+    {
+        var data = SaveSystem.Load(slot);
+        if (data == null) menu.Add(0, name + "   ----", dimColor);
+        else menu.Add(0, $"{name}   {data.lastSaveTime}", normalColor, () => Play(slot));
+    }
+
+    /// <summary>新的存檔：已有存檔要按兩次；清掉 save1、save2，從一周目開頭開始。</summary>
+    void NewGame()
+    {
+        if (SaveSystem.HasSave(SaveSystem.Save1) && !confirmingNew)
+        {
+            confirmingNew = true;
+            Rebuild();
+            return;
+        }
         SaveSystem.DeleteAll();
         SaveSystem.Save(SaveSystem.Save1, new SaveData());
         Play(SaveSystem.Save1);
     }
 
     /// <summary>讀 save1 / save2 (SaveSystem.Save1 / Save2)。</summary>
-    public void Play(int slot)
+    void Play(int slot)
     {
         if (loading || !SaveSystem.HasSave(slot)) return;
         loading = true;
