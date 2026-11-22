@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 物品欄畫面 (工作列上的 5 格)。格子 (InventorySlotUI) 直接擺在場景裡、依序拖進 slots，監聽 Changed 事件刷新。
+/// 物品欄畫面 (工作列上的 6 格：最左邊的電腦 TerminalButton + Slot1~5)。格子 (InventorySlotUI) 直接擺在場景裡、依序拖進 slots，監聽 Changed 事件刷新。
 /// 格子數要跟 Inventory 的 slotCount 一樣。
 /// </summary>
 public class InventoryUI : MonoBehaviour

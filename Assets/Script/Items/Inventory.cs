@@ -22,7 +22,7 @@ public class ItemInstance
 /// </summary>
 public class Inventory : MonoBehaviour
 {
-    [Range(1, 9)] [SerializeField] int slotCount = 5;
+    [Range(1, 9)] [SerializeField] int slotCount = 6;
 
     ItemInstance[] slots;
 
@@ -90,9 +90,12 @@ public class Inventory : MonoBehaviour
         Changed?.Invoke();
     }
 
+    /// <summary>這格的道具固定不能移動 (ItemDefinition.Pinned)。</summary>
+    public bool IsPinned(int index) => slots[index] != null && slots[index].definition.Pinned;
+
     public void Swap(int a, int b)
     {
-        if (Locked || a == b) return;
+        if (Locked || a == b || IsPinned(a) || IsPinned(b)) return;
         (slots[a], slots[b]) = (slots[b], slots[a]);
         // 選取框跟著被拖走的道具
         if (Selected == a) Selected = b;
@@ -106,7 +109,8 @@ public class Inventory : MonoBehaviour
         Array.Clear(slots, 0, slots.Length);
         for (int i = 0; i < defs.Count && i < slots.Length; i++)
             if (defs[i] != null) slots[i] = new ItemInstance(defs[i], defs[i].startingUses);
-        Selected = 0;
+        // 預設選第一個一般道具 (跳過電腦這種固定格)
+        Selected = Mathf.Max(0, Array.FindIndex(slots, x => x != null && !x.definition.Pinned));
         Changed?.Invoke();
     }
 

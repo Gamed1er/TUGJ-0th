@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// 劇情對話框 (dialogue.png)。打字機一個字一個字出現，每個字播一次 voice (隨機音高，像 Undertale)。
 /// 操作：Space / Enter / E / 左鍵 → 打字中 = 直接顯示整句；整句顯示完 = 下一句；最後一句按完就結束。
-/// root 平常關著。由 GameManager.IntroRoutine 呼叫 Play (鎖玩家輸入是 GameManager 的事)。
+/// root 平常關著。由 GameManager.IntroRoutine (開場) / EndingUI.PlayStory (結局) 呼叫 Play (鎖玩家輸入是 GameManager 的事)。
 /// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class DialogueUI : MonoBehaviour
@@ -89,7 +89,7 @@ public class DialogueUI : MonoBehaviour
         source.Play();
     }
 
-    static bool NextPressed()
+    public static bool NextPressed()
     {
         var kb = Keyboard.current;
         return (kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame

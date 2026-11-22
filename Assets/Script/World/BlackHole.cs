@@ -45,6 +45,8 @@ public class BlackHole : MonoBehaviour
     public ParticleSystem pullFx;
     [Tooltip("吸入粒子往中心移動的速度 (格/秒)")]
     public float pullFxSpeed = 2.5f;
+    [Tooltip("固定後循環的吸入音效 (BlackHole 上的 LoopSfx 元件，離玩家越遠越小聲)")]
+    public LoopSfx pullSfx;
 
     public bool IsFlying { get; private set; }
 
@@ -79,6 +81,7 @@ public class BlackHole : MonoBehaviour
         IsFlying = false;
         SetIndicator(true);
         if (pullFx != null) pullFx.Play();
+        if (pullSfx != null) pullSfx.Play();
     }
 
     /// <summary>收回 (直接消失，不退次數)。</summary>

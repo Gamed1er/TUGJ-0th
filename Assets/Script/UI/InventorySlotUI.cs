@@ -3,7 +3,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// 物品欄的一格 (工作列上)。左鍵點擊 = 選取；拖曳到另一格 = 交換位置。
+/// 物品欄的一格 (工作列上)。左鍵點擊 = 選取；拖曳到另一格 = 交換位置 (固定的道具 Pinned 不能拖、也不能被換)。
+/// 電腦格 (TerminalButton) 也是一格，同一個物件上的 Button 會另外打開終端機。
 /// 選中時顯示 selectedFrame (UI_select 框)。keyText、background 可以不接。
 /// </summary>
 public class InventorySlotUI : MonoBehaviour,
@@ -51,7 +52,7 @@ public class InventorySlotUI : MonoBehaviour,
         this.item = item;
         selectedFrame.SetActive(selected);
         bool has = item != null;
-        icon.enabled = has;
+        icon.enabled = has && item.definition.icon != null; // 電腦的圖畫在工作列底圖上，沒有 icon
         usesText.text = has && item.definition.ShowUses ? item.uses.ToString() : "";
         if (has)
         {
@@ -69,9 +70,9 @@ public class InventorySlotUI : MonoBehaviour,
 
     public void OnBeginDrag(PointerEventData e)
     {
-        if (e.button != PointerEventData.InputButton.Left || owner.Inventory.Get(index) == null)
+        if (e.button != PointerEventData.InputButton.Left || owner.Inventory.Get(index) == null || owner.Inventory.IsPinned(index))
         {
-            e.pointerDrag = null; // 空格不能拖
+            e.pointerDrag = null; // 空格、固定的道具不能拖
             return;
         }
         iconParent = icon.transform.parent;
