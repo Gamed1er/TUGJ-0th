@@ -46,7 +46,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -60,7 +60,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 24
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -84,7 +84,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -122,89 +122,89 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: pad-using-Sheet_0
+      name: pad-using_0
       rect:
         serializedVersion: 2
-        x: 13
+        x: 0
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a821a81066775a880800000000000000
-      internalID: -8600336633397898614
+      spriteID: 79ec3ee17648ccb4aa399928225f62e0
+      internalID: -837714468
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-using-Sheet_1
+      name: pad-using_1
       rect:
         serializedVersion: 2
-        x: 63
+        x: 50
         y: 0
-        width: 24
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 4c738daaaaeafd890800000000000000
-      internalID: -7431028812104058940
+      spriteID: 4a6c02f00ec7fc641a203a6ccf423a63
+      internalID: -1792316483
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-using-Sheet_2
+      name: pad-using_2
       rect:
         serializedVersion: 2
-        x: 113
+        x: 100
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 6e5bac397a2c2def0800000000000000
-      internalID: -84791417971755546
+      spriteID: f6609a3059e921f4792b7dddbbc304ff
+      internalID: 2094386862
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-using-Sheet_3
+      name: pad-using_3
       rect:
         serializedVersion: 2
-        x: 163
+        x: 150
         y: 0
-        width: 24
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 46fa80016bfe19950800000000000000
-      internalID: 6454203306230722404
+      spriteID: 3617e130be465804ca6e42a49eac1624
+      internalID: -1505106055
       vertices: []
       indices: 
       edges: []
@@ -213,7 +213,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5b58a72716498a344b7e9c125d1eab63
     internalID: 0
     vertices: []
     indices: 
@@ -227,6 +227,10 @@ TextureImporter:
       pad-using-Sheet_1: -7431028812104058940
       pad-using-Sheet_2: -84791417971755546
       pad-using-Sheet_3: 6454203306230722404
+      pad-using_0: -837714468
+      pad-using_1: -1792316483
+      pad-using_2: 2094386862
+      pad-using_3: -1505106055
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

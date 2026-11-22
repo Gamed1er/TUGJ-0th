@@ -64,7 +64,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -78,7 +78,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 24
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -102,7 +102,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -140,221 +140,199 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: gun2-Sheet_0
+      name: gun2_0
       rect:
         serializedVersion: 2
-        x: 13
+        x: 0
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1c6f19c5fe1fa9410800000000000000
-      internalID: 1484765037524547265
+      spriteID: dd4192442778e634f9d0afb37b80975e
+      internalID: -1570805081
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_1
+      name: gun2_1
       rect:
         serializedVersion: 2
-        x: 61
+        x: 50
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: e6a454ca7d3597830800000000000000
-      internalID: 4069375924079250030
+      spriteID: abc2d5ed41fa1aa4fb63debc1c005628
+      internalID: -1804548324
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_2
+      name: gun2_2
       rect:
         serializedVersion: 2
-        x: 111
+        x: 100
         y: 0
-        width: 28
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1f929fcfaee48a3c0800000000000000
-      internalID: -4348138669052712463
+      spriteID: e63b36f05195a8a46a192b4c9ee5323e
+      internalID: 2135518436
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_3
+      name: gun2_3
       rect:
         serializedVersion: 2
-        x: 162
+        x: 150
         y: 0
-        width: 31
-        height: 41
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 67feff7dfae21f430800000000000000
-      internalID: 3814881692137549686
+      spriteID: 4c9959462ef05de44ba42d060126e9f5
+      internalID: -418753358
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_4
+      name: gun2_4
       rect:
         serializedVersion: 2
-        x: 213
+        x: 200
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 25532032e53727390800000000000000
-      internalID: -7822062754637662894
+      spriteID: 6da696efe174e7642bc275f13d51b998
+      internalID: -1714209255
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_5
+      name: gun2_5
       rect:
         serializedVersion: 2
-        x: 226
-        y: 25
-        width: 17
-        height: 17
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 250
+        y: 0
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8963d1df2ae577e20800000000000000
-      internalID: 3348248902097516184
+      spriteID: d52b2e47c4ea3ae4a9f99a550d87d41e
+      internalID: -377093441
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_6
+      name: gun2_6
       rect:
         serializedVersion: 2
-        x: 263
+        x: 300
         y: 0
-        width: 30
-        height: 45
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 1b83c3f5da30d3880800000000000000
-      internalID: -8629737267809994575
+      spriteID: 7235f6f77366c704986bb34842d8a114
+      internalID: -1672642827
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_7
+      name: gun2_7
       rect:
         serializedVersion: 2
-        x: 313
+        x: 350
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 9471605b3efee84d0800000000000000
-      internalID: -3130300929702226103
+      spriteID: a00ad61a53c84cf49bfeb8cb7a6cd034
+      internalID: 419962733
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-Sheet_8
+      name: gun2_8
       rect:
         serializedVersion: 2
-        x: 363
+        x: 400
         y: 0
-        width: 22
-        height: 35
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: e104d5a8e6230e2e0800000000000000
-      internalID: -2098621976005492706
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: gun2-Sheet_9
-      rect:
-        serializedVersion: 2
-        x: 413
-        y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 30f0e2d677e8d0000800000000000000
-      internalID: 3815818281225987
+      spriteID: e995a659dd43c214ca92a7acdc6e5998
+      internalID: 907561434
       vertices: []
       indices: 
       edges: []
@@ -363,7 +341,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 2186c4372a7aa41419b3eb0045d259d5
     internalID: 0
     vertices: []
     indices: 
@@ -383,6 +361,15 @@ TextureImporter:
       gun2-Sheet_7: -3130300929702226103
       gun2-Sheet_8: -2098621976005492706
       gun2-Sheet_9: 3815818281225987
+      gun2_0: -1570805081
+      gun2_1: -1804548324
+      gun2_2: 2135518436
+      gun2_3: -418753358
+      gun2_4: -1714209255
+      gun2_5: -377093441
+      gun2_6: -1672642827
+      gun2_7: 419962733
+      gun2_8: 907561434
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

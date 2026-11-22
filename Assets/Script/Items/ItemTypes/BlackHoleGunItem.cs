@@ -24,6 +24,8 @@ public class BlackHoleGunItem : ItemDefinition
 
         Instantiate(blackHolePrefab, ctx.player.Body.position, Quaternion.identity).Launch(ctx.AimDirection);
         ctx.Consume();
+        var anim = ctx.player.GetComponent<PlayerAnimator>();
+        if (anim != null) anim.PlayShot(); // 射擊動畫
     }
 
     /// <summary>提示線：場上沒有黑洞 (下一次右鍵 = 發射) 時，直線畫到黑洞會停下的位置。</summary>
