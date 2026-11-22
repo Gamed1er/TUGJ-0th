@@ -5073,7 +5073,9 @@ MonoBehaviour:
     m_Bits: 256
   breakRadius: 2
   pullRadius: 4
-  maxPullSpeed: 3.5
+  playerPull: 3.5
+  objectPull: 20
+  bulletPull: 63
   damping: 15
   rangeIndicator: {fileID: 7532826742363311707}
   pullFx: {fileID: 5254604556798439503}
