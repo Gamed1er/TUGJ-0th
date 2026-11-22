@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// 標題畫面：背景循環播 main 動畫 (UIFrameAnimation)，下方閃爍「Click to start」。
+/// 標題畫面：背景循環播 main 動畫 (UIFrameAnimation，「開始」的字畫在背景圖上)。
 /// 點擊任意位置 (或 Enter / Space) → 彈出終端機風格的存檔視窗 (TerminalMenu)：
 ///   new save (已有存檔要按兩次，清掉 save1、save2 從一周目開始) / save1 / save2 (存在才能選)。
 /// 視窗右上角 × 或 Esc 關閉，回到動畫。
@@ -12,9 +12,6 @@ using UnityEngine.SceneManagement;
 public class TitleMenu : MonoBehaviour
 {
     [SerializeField] ScreenFader fader;
-    [Tooltip("閃爍的「Click to start」")]
-    [SerializeField] GameObject clickHint;
-    [SerializeField] float blinkRate = 1.2f;
 
     [Header("存檔視窗")]
     [SerializeField] GameObject popup;
@@ -23,6 +20,8 @@ public class TitleMenu : MonoBehaviour
     [SerializeField] Font font;
     [SerializeField] int fontSize = 34;
     [SerializeField] float rowHeight = 52f;
+    [Tooltip("選單按下 (Enter / 點擊) 的音效")]
+    [SerializeField] AudioClip clickSfx;
     [SerializeField] Color normalColor = new Color(0.3f, 1f, 0.4f);
     [Tooltip("不能選的行 (沒有存檔)")]
     [SerializeField] Color dimColor = new Color(0.15f, 0.45f, 0.2f);
@@ -32,7 +31,6 @@ public class TitleMenu : MonoBehaviour
     TerminalMenu menu;
     bool confirmingNew;
     bool loading;
-    float blinkTime;
     int closedFrame = -1; // 按 × 關閉的那一幀不能又被當成「點擊開始」
 
     bool PopupOpen => popup.activeSelf;
@@ -41,7 +39,7 @@ public class TitleMenu : MonoBehaviour
     {
         GameInput.Locked = false;
         Time.timeScale = 1f;
-        menu = new TerminalMenu(font, fontSize, rowHeight, column);
+        menu = new TerminalMenu(font, fontSize, rowHeight, clickSfx, column);
         popup.SetActive(false);
     }
 
@@ -50,8 +48,6 @@ public class TitleMenu : MonoBehaviour
         if (loading) return;
         if (!PopupOpen)
         {
-            blinkTime += Time.unscaledDeltaTime;
-            if (clickHint != null) clickHint.SetActive(Mathf.Repeat(blinkTime * blinkRate, 1f) < 0.6f);
             if (StartPressed() && Time.frameCount != closedFrame) Open();
             return;
         }
@@ -69,7 +65,6 @@ public class TitleMenu : MonoBehaviour
     void Open()
     {
         popup.SetActive(true);
-        if (clickHint != null) clickHint.SetActive(false);
         confirmingNew = false;
         menu.ForgetSelection();
         Rebuild();

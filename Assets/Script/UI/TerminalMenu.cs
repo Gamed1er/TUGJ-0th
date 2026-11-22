@@ -28,13 +28,15 @@ public class TerminalMenu
     readonly Font font;
     readonly int fontSize;
     readonly float rowHeight;
+    readonly AudioClip clickSfx;
     readonly List<Entry> entries = new List<Entry>();
     int keepColumn, keepLine = -1;
 
     public Entry Selected { get; private set; }
 
-    public TerminalMenu(Font font, int fontSize, float rowHeight, params RectTransform[] columns)
+    public TerminalMenu(Font font, int fontSize, float rowHeight, AudioClip clickSfx, params RectTransform[] columns)
     {
+        this.clickSfx = clickSfx;
         this.font = font != null ? font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         this.fontSize = fontSize;
         this.rowHeight = rowHeight;
@@ -87,6 +89,7 @@ public class TerminalMenu
             row.Clicked = side =>
             {
                 Select(e);
+                Sfx.Play(clickSfx);
                 if (e.adjust != null) e.adjust(side);
                 else e.submit?.Invoke();
             };
@@ -110,7 +113,11 @@ public class TerminalMenu
         Vector2Int move = GameInput.MenuMove;
         if (move.y != 0) MoveVertical(-move.y);
         else if (move.x != 0) MoveHorizontal(move.x);
-        if (GameInput.SubmitPressed && Selected != null) Selected.submit?.Invoke();
+        if (GameInput.SubmitPressed && Selected?.submit != null)
+        {
+            Sfx.Play(clickSfx);
+            Selected.submit();
+        }
     }
 
     void Refresh()
@@ -142,7 +149,7 @@ public class TerminalMenu
     void MoveHorizontal(int dir)
     {
         if (Selected == null) return;
-        if (Selected.adjust != null) { Selected.adjust(dir); return; }
+        if (Selected.adjust != null) { Sfx.Play(clickSfx); Selected.adjust(dir); return; }
         int column = Selected.column + dir;
         Entry best = null;
         int bestD = int.MaxValue;

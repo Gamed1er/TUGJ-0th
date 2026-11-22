@@ -10,7 +10,7 @@ using UnityEngine;
 ///   停下來時直接停在拿槍動畫的最後一格。拿槍時空中也循環播拿槍走路的圖 (沒拿槍才用 jumpFrames)。
 /// 操控無人機 (Drone.Controlled)：播 padTake 一次 → 循環 padUsing。
 /// 優先順序：空中 (沒拿槍) > 無人機平板 > 射擊 > 拿槍走路 / 拿槍空中 > 走路 > 拿槍 > 站立。
-/// 特效：落地 (landFx)、走路落腳 (walkFx，walkFxFrames 指定哪幾格)。
+/// 特效：落地 (landFx)、走路落腳 (walkFx + walkSfx，walkFxFrames 指定哪幾格)。
 /// 左右翻轉平常由 PlayerController 處理 (sprite.flipX)，拿槍站著時這裡改成面向滑鼠。
 /// </summary>
 [RequireComponent(typeof(PlayerController))]
@@ -64,6 +64,11 @@ public class PlayerAnimator : MonoBehaviour
     [SerializeField] GameObject walkFx;
     [Tooltip("走路動畫播到這幾格 (從 0 開始) 時噴灰塵 = 落腳的格子")]
     [SerializeField] int[] walkFxFrames = { 0, 2 };
+    [Tooltip("走路落腳的音效 (跟灰塵同一格播)")]
+    [SerializeField] AudioClip walkSfx;
+    [SerializeField, Range(0f, 1f)] float walkSfxVolume = 0.5f;
+    [Tooltip("每一步隨機的音高範圍 (1 = 原音高)")]
+    [SerializeField] Vector2 walkSfxPitch = new Vector2(0.85f, 1.15f);
 
     PlayerController player;
     Inventory inventory;
@@ -186,8 +191,11 @@ public class PlayerAnimator : MonoBehaviour
         if (walkFrame != lastWalkFrame)
         {
             lastWalkFrame = walkFrame;
-            if (walkFx != null && player.IsGrounded && System.Array.IndexOf(walkFxFrames, walkFrame) >= 0)
-                Instantiate(walkFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
+            if (player.IsGrounded && System.Array.IndexOf(walkFxFrames, walkFrame) >= 0)
+            {
+                if (walkFx != null) Instantiate(walkFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
+                Sfx.PlayPitched(walkSfx, walkSfxVolume, walkSfxPitch);
+            }
         }
     }
 }

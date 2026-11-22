@@ -111,11 +111,11 @@ MonoBehaviour:
   hitMask:
     serializedVersion: 2
     m_Bits: 256
-  pullAcceleration: 18
   stallTime: 1
   stallDistance: 1
   searchRadius: 6
   teleportFx: {fileID: 775416111570389439, guid: dc9dc2b5bcb5b4845a3bae9ab019172b, type: 3}
+  teleportSfx: {fileID: 8300000, guid: eb7ff2265fe5dae42964cb341debd082, type: 3}
   vanishFx: {fileID: 775416111570389439, guid: b19c09eb33d4c064ea2667993447b00b, type: 3}
 --- !u!96 &328318048285027106
 TrailRenderer:
