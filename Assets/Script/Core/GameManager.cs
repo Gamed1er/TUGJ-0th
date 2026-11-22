@@ -11,7 +11,7 @@ using UnityEngine.Tilemaps;
 /// - 進場時讀檔並套用 (玩家位置 = 目前房間的重生點、物品欄 = 目前房間的快照)
 /// - 自動存檔：每進入一個房間 (MapArea，經過 MapEdge 轉場) 就存檔 (EnterRoom)；讀檔 = 終端機點房間 (RewindTo)
 /// - 死亡 → 淡出 → 重新載入場景 (= 回到目前房間的快照)；R 鍵 (RestartAtNode) 也一樣
-/// - 通關 (ClearGame)：一周目 → 記錄電池位置、建立 save2、從頭開始二周目
+/// - 通關 (ClearGame)：一周目 → 記錄電池位置、建立 save2、從頭開始二周目；二周目 → 播 end 動畫 → 回標題
 /// - 二周目 transform (終端機右半邊)：在目前房間生成一周目記錄的電池，每個房間一次，使用紀錄跟著快照存
 /// 其他腳本透過 GameManager.Instance 呼叫。
 /// </summary>
@@ -28,6 +28,8 @@ public class GameManager : MonoBehaviour
     public ScreenFader fader;
     [Tooltip("跟隨玩家的鏡頭 (操控無人機時改跟無人機)")]
     public CinemachineCamera vcam;
+    [Tooltip("二周目通關時播的 end 動畫")]
+    public EndingUI ending;
 
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
@@ -227,14 +229,14 @@ public class GameManager : MonoBehaviour
 
     /// <summary>
     /// 通關 (ClearGoal 呼叫)。一周目：記錄玩家生成的電池位置 → 建立全新的 save2 (舊的 save2 被覆蓋) → 從頭開始二周目。
-    /// save1 保留通關當下的狀態，之後可以從標題畫面讀 save1 回去重玩一周目。二周目：只顯示「通關」。
+    /// save1 保留通關當下的狀態，之後可以從標題畫面讀 save1 回去重玩一周目。二周目：播 end 動畫，按任意鍵回標題。
     /// </summary>
     public void ClearGame()
     {
         if (Busy) return;
         if (data.loop >= 2)
         {
-            ToastUI.Show("通關");
+            StartCoroutine(EndingRoutine());
             return;
         }
 
@@ -248,6 +250,28 @@ public class GameManager : MonoBehaviour
         ToastUI.Show("一周目通關");
         transitioning = true;
         StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
+    }
+
+    IEnumerator EndingRoutine()
+    {
+        transitioning = true;
+        Drone.RemoveAll();
+        GameInput.Locked = true;
+        player.SetFrozen(true);
+        if (ending == null)
+        {
+            ToastUI.Show("通關");
+            yield return new WaitForSecondsRealtime(2f);
+        }
+        else
+        {
+            if (fader != null) yield return fader.FadeOut();
+            Time.timeScale = 0f; // 動畫期間遊戲停住
+            var play = StartCoroutine(ending.Play()); // 立刻顯示 end 畫面，再從黑畫面淡入
+            if (fader != null) StartCoroutine(fader.FadeIn());
+            yield return play;
+        }
+        yield return LoadSceneRoutine(SceneNames.Title);
     }
 
     // ---------- 死亡 / 轉場 ----------

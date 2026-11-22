@@ -10,7 +10,8 @@ using UnityEngine;
 /// 跟玩家、電池永遠不碰撞；跟地形、門、平台會碰撞。切換地圖 / 死亡重載時全部消失。
 /// 操控的開始與結束 (鏡頭、物品欄鎖定) 在 BeginControl / EndControl。
 /// 吊起電池：電池移到正下方 (carryOffset)；那裡被擋住 → 無人機往上移 (最多 maxLift 格)，還是放不下 → 提示不能搬運。
-/// 吊著電池時玩家可以站在電池上 (會被帶著走)，連續站滿 crashTime 秒 → 放開電池並墜機 (= 沒電往下掉)。
+/// 吊著電池時玩家可以站在電池上 (會被帶著走)。玩家一踩上去就開始倒數 crashTime 秒 (離開也不會取消)：
+/// 倒數中冒 warnFx (火花 + 黑煙) 並閃紅，時間到 → 放開電池並墜機 (= 沒電往下掉，播 crashFx)。
 /// 吊著的電池爆炸 (擠壓、火箭、連鎖) → 手上變空，無人機仍有電 (ReleaseCarried)。
 /// 外觀：待機 = openSprite、操控中 = 循環播 flyFrames、沒電 = closeSprite + 黑白材質。
 /// </summary>
@@ -40,10 +41,16 @@ public class Drone : MonoBehaviour
     public float maxLift = 1f;
 
     [Header("墜機")]
-    [Tooltip("玩家站在吊著的電池上幾秒後墜機")]
+    [Tooltip("玩家踩到吊著的電池後幾秒墜機 (踩到就開始倒數，離開也不會取消)")]
     public float crashTime = 1f;
     [Tooltip("墜機時的火花 (自己播完自己消失)")]
     public GameObject crashFx;
+    [Tooltip("墜機倒數中的循環特效 (火花 + 黑煙，生成在無人機上當子物件)")]
+    public GameObject warnFx;
+    [Tooltip("墜機倒數中閃爍的顏色")]
+    public Color warnColor = new Color(1f, 0.3f, 0.25f, 1f);
+    [Tooltip("閃爍頻率 (次/秒)")]
+    public float warnFlashRate = 8f;
 
     [Header("外觀 (美術可替換)")]
     public SpriteRenderer visual;
@@ -64,7 +71,11 @@ public class Drone : MonoBehaviour
     MapArea area;
     Battery carried;
     Vector2 lastPull;
-    float standTimer;   // 玩家站在吊著的電池上的時間
+    Vector2 knockLeft;     // 擊退還沒扣掉的部分
+    float knockRate;
+    float crashLeft = -1f; // 墜機倒數 (< 0 = 沒在倒數)
+    GameObject warnFxInstance;
+    Color baseColor = Color.white;
     float animTimer;
     Material normalMaterial;
     readonly List<Lever> nearLevers = new List<Lever>();
@@ -77,7 +88,7 @@ public class Drone : MonoBehaviour
         col = GetComponent<Collider2D>();
         rb.gravityScale = 0f;
         area = MapArea.Find(transform.position);
-        if (visual != null) normalMaterial = visual.sharedMaterial;
+        if (visual != null) { normalMaterial = visual.sharedMaterial; baseColor = visual.color; }
         if (Powered != null) Powered.Deplete(); // 保險：永遠只有一台有電
         Powered = this;
         SetVisual();
@@ -134,7 +145,36 @@ public class Drone : MonoBehaviour
         IsPowered = false;
         if (Powered == this) Powered = null;
         rb.gravityScale = fallGravity;
+        StopWarning();
         SetVisual();
+    }
+
+    /// <summary>開始墜機倒數 (已經在倒數就不重來)。</summary>
+    void StartWarning()
+    {
+        if (crashLeft >= 0f) return;
+        crashLeft = crashTime;
+        if (warnFx != null) warnFxInstance = Instantiate(warnFx, transform.position, Quaternion.identity, transform);
+    }
+
+    void StopWarning()
+    {
+        crashLeft = -1f;
+        if (warnFxInstance != null) Destroy(warnFxInstance);
+        warnFxInstance = null;
+        if (visual != null) visual.color = baseColor;
+    }
+
+    /// <summary>倒數中：閃紅；時間到 → 墜機。</summary>
+    void UpdateWarning()
+    {
+        if (crashLeft < 0f) return;
+        crashLeft -= Time.fixedDeltaTime;
+        if (visual != null)
+            visual.color = Mathf.Repeat((crashTime - crashLeft) * warnFlashRate, 1f) < 0.5f ? warnColor : baseColor;
+        if (crashLeft > 0f) return;
+        if (crashFx != null) Instantiate(crashFx, transform.position, Quaternion.identity);
+        Deplete(); // 放開電池、往下掉
     }
 
     /// <summary>移除這台 (被平台擠壞、切換地圖)。不扣次數。</summary>
@@ -144,10 +184,15 @@ public class Drone : MonoBehaviour
         Destroy(gameObject);
     }
 
-    /// <summary>擊退 (電池爆炸)。只對沒電的無人機有效 (有電的不受外力影響)。</summary>
+    public Rigidbody2D Body => rb;
+
+    /// <summary>擊退 (電池爆炸)。只對沒電的無人機有效 (有電的不受外力影響)。跟電池一樣在 Knockback.Time 秒內衰減。</summary>
     public void AddKnockback(Vector2 velocity)
     {
-        if (!IsPowered) rb.linearVelocity += velocity;
+        if (IsPowered) return;
+        rb.linearVelocity += velocity;
+        knockLeft += velocity;
+        knockRate = knockLeft.magnitude / Knockback.Time;
     }
 
     public static void RemoveAll()
@@ -213,7 +258,6 @@ public class Drone : MonoBehaviour
     {
         if (carried != battery) return;
         carried = null;
-        standTimer = 0f;
     }
 
     void FixedUpdate()
@@ -251,18 +295,15 @@ public class Drone : MonoBehaviour
             carried.Body.MovePosition(rb.position + v * dt + carryOffset);
             CarryRider(v * dt);
         }
-        else standTimer = 0f;
+        UpdateWarning();
     }
 
-    /// <summary>玩家站在吊著的電池上：跟著水平移動；站滿 crashTime 秒 → 墜機。</summary>
+    /// <summary>玩家站在吊著的電池上：跟著水平移動；踩到就開始墜機倒數。</summary>
     void CarryRider(Vector2 delta)
     {
         var player = GameManager.Instance != null ? GameManager.Instance.player : null;
-        if (player == null || !StandingOnCarried(player))
-        {
-            standTimer = 0f;
-            return;
-        }
+        if (player == null || !StandingOnCarried(player)) return;
+        StartWarning();
 
         // 水平跟著走 (垂直由物理推動 / 玩家的地面吸附處理)；前面有牆就不帶
         if (delta.x != 0f)
@@ -272,13 +313,6 @@ public class Drone : MonoBehaviour
             var dir = new Vector2(Mathf.Sign(delta.x), 0f);
             if (player.Body.Cast(dir, filter, hits, Mathf.Abs(delta.x) + 0.02f) == 0)
                 player.Body.position += new Vector2(delta.x, 0f);
-        }
-
-        standTimer += Time.fixedDeltaTime;
-        if (standTimer >= crashTime)
-        {
-            if (crashFx != null) Instantiate(crashFx, transform.position, Quaternion.identity);
-            Deplete(); // 放開電池、往下掉
         }
     }
 
@@ -353,6 +387,8 @@ public class Drone : MonoBehaviour
 
     void DepletedMove()
     {
+        rb.linearVelocity = Knockback.Decay(ref knockLeft, knockRate, rb.linearVelocity);
+
         // 跟電池一樣：越靠近黑洞重力越小，原本的速度也被抵銷
         Vector2 pull = BlackHole.SamplePull(rb.position, BlackHole.PullTarget.Object, out float s);
         rb.gravityScale = fallGravity * (1f - s);

@@ -565,28 +565,9 @@ public static class DevContentBuilder
         var canvas = MakeCanvas();
         MakeEventSystem();
 
-        var title = NewText("Title", canvas, "TUGJ-0th (暫定標題)", 72, TextAnchor.MiddleCenter);
-        title.rectTransform.anchoredPosition = new Vector2(0, 320);
-        title.rectTransform.sizeDelta = new Vector2(1200, 120);
-
-        var slots = new TitleSlotUI[3]; // 新的存檔 / save1 / save2
-        for (int i = 0; i < slots.Length; i++)
-        {
-            var row = NewUI($"Slot{i + 1}", canvas, new Vector2(700, 110));
-            row.anchoredPosition = new Vector2(0, 120 - i * 140);
-
-            var play = NewButton("PlayButton", row, new Vector2(540, 110), out var playLabel, 32);
-            play.GetComponent<RectTransform>().anchoredPosition = new Vector2(-80, 0);
-
-            var ui = row.gameObject.AddComponent<TitleSlotUI>();
-            Set(ui, "playButton", play);
-            Set(ui, "playLabel", playLabel);
-            slots[i] = ui;
-        }
-
+        // 過時：只產生最簡單的標題 (存檔視窗 popup / column 沒有建立)，正式的 Title 場景是 MCP 建的
         var fader = MakeFader(canvas);
         var menu = new GameObject("TitleMenu").AddComponent<TitleMenu>();
-        Set(menu, "slots", slots);
         Set(menu, "fader", fader);
 
         EditorSceneManager.SaveScene(scene, $"{SceneDir}/Title.unity");

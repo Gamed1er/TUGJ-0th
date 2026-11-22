@@ -10,7 +10,8 @@ using UnityEngine;
 ///
 /// 爆炸 (Explode)：被平台擠壓 (MovingPlatform)、二周目 transform 生成時重疊 → 立刻爆炸。
 /// 被火箭尾氣噴到 (PlayerRocket，rocketProof 的不會) → 先點燃引信 (StartFuse)：閃紅 + 頭上顯示倒數 + 火花，fuseTime 秒後爆炸。
-/// 範圍內的玩家、沒電的無人機被往外推；範圍內的其他電池先被往外推 (吊著的不會)，延遲 chainDelay 秒後連鎖爆炸。
+/// 範圍內的玩家、沒電的無人機、其他電池 (吊著的不會) 被往外推 (Knockback.Apply：疊在一起的會一起飛)；
+/// 其他電池延遲 chainDelay 秒後連鎖爆炸。
 /// 吊著的電池也會爆炸 (擠壓、火箭、連鎖)，爆炸後無人機手上變空 (Drone.ReleaseCarried)。
 /// 範圍內的可破壞方塊 (Breakable) 被破壞 (隔牆也會)。不會炸死玩家。
 /// </summary>
@@ -61,6 +62,8 @@ public class Battery : MonoBehaviour
     Collider2D col;
     float baseGravity;
     Vector2 lastPull;
+    Vector2 knockLeft;       // 擊退還沒扣掉的部分
+    float knockRate;
     int pushedStep = -1;     // 最後一次被推的物理步 (Push 由玩家呼叫)
     bool wasPushed;
     readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
@@ -113,6 +116,7 @@ public class Battery : MonoBehaviour
         var filter = new ContactFilter2D { useTriggers = false };
         int n = Physics2D.OverlapCircle(center, explosionRadius, filter, overlap);
         var done = new HashSet<Object>();
+        var bodies = new List<Rigidbody2D>(); // 要被擊退的東西
         for (int i = 0; i < n; i++)
         {
             var c = overlap[i];
@@ -121,16 +125,17 @@ public class Battery : MonoBehaviour
             {
                 if (battery != this && done.Add(battery))
                 {
-                    if (!battery.IsCarried) battery.rb.linearVelocity += Knockback(center, battery.rb.position); // 先被炸飛
-                    battery.ExplodeAfter(chainDelay); // 再連鎖爆炸
+                    if (!battery.IsCarried) bodies.Add(battery.rb); // 先被炸飛
+                    battery.ExplodeAfter(chainDelay);              // 再連鎖爆炸
                 }
                 continue;
             }
             var player = c.GetComponent<PlayerController>();
-            if (player != null && done.Add(player)) { player.AddKnockback(Knockback(center, player.Body.position)); continue; }
+            if (player != null && done.Add(player)) { bodies.Add(player.Body); continue; }
             var drone = c.GetComponentInParent<Drone>();
-            if (drone != null && !drone.IsPowered && done.Add(drone)) drone.AddKnockback(Knockback(center, drone.transform.position));
+            if (drone != null && !drone.IsPowered && done.Add(drone)) bodies.Add(drone.Body);
         }
+        Knockback.Apply(center, explosionRadius, maxKnockback, bodies);
         Breakable.BreakAround(center, explosionRadius);
 
         Destroy(gameObject);
@@ -186,13 +191,13 @@ public class Battery : MonoBehaviour
         Invoke(nameof(Explode), delay);
     }
 
-    /// <summary>從爆炸中心往外的擊退速度，越近越強。</summary>
-    Vector2 Knockback(Vector2 center, Vector2 target)
+    /// <summary>擊退 (爆炸)：速度一次加上去，之後在 Knockback.Time 秒內把這部分扣掉 (跟玩家一致)。</summary>
+    public void AddKnockback(Vector2 velocity)
     {
-        Vector2 d = target - center;
-        float dist = d.magnitude;
-        Vector2 dir = dist > 0.01f ? d / dist : Vector2.up;
-        return dir * (maxKnockback * Mathf.Clamp01(1f - dist / explosionRadius));
+        if (IsCarried || exploded) return;
+        rb.linearVelocity += velocity;
+        knockLeft += velocity;
+        knockRate = knockLeft.magnitude / Knockback.Time;
     }
 
     // ---------- 推動 ----------
@@ -279,7 +284,8 @@ public class Battery : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (IsCarried) return;
+        if (IsCarried) { knockLeft = Vector2.zero; return; }
+        rb.linearVelocity = Knockback.Decay(ref knockLeft, knockRate, rb.linearVelocity);
 
         // 被推中：速度由 Push 決定；剛停止推 → 停下 (避免沿坡往上飛出去)
         if (pushedStep >= Step - 1) return;
