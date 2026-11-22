@@ -24,4 +24,7 @@ public abstract class Activatable : MonoBehaviour
 
     /// <summary>拉桿呼叫：翻轉。</summary>
     public void Toggle() => Active = !Active;
+
+    /// <summary>程式直接開 / 關 (例如 TrueEndGate 打開 room 6 的門)。</summary>
+    public void SetActivated(bool on) => Active = on;
 }

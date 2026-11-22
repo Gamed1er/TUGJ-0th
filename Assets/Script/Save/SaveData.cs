@@ -59,6 +59,9 @@ public class RoomSnapshot
 
     /// <summary>二周目：已經用過 transform 的房間 (MapArea.Id)。</summary>
     public List<string> recallUsedAreas = new List<string>();
+
+    /// <summary>二周目最後的房間 (room 6)：進來那一刻五個 [Target] 機關是否觸發中 (順序 = TrueEndGate 的順序)。</summary>
+    public List<bool> targetResults = new List<bool>();
 }
 
 [Serializable]

@@ -12,6 +12,8 @@ using UnityEngine.Tilemaps;
 /// - 自動存檔：每進入一個房間 (MapArea，經過 MapEdge 轉場) 就存檔 (EnterRoom)；讀檔 = 終端機點房間 (RewindTo)
 /// - 死亡 → 淡出 → 重新載入場景 (= 回到目前房間的快照)；R 鍵 (RestartAtNode) 也一樣
 /// - 通關 (ClearGame)：一周目 → 記錄電池位置、建立 save2、從頭開始二周目；二周目 → 播 end 動畫 → 回標題
+/// - 最後的房間 (room 6，FinalRoom)：一周目進來 = 通關 (播 clearLoop1)；二周目進來 = 結算 [Target] 條件 (TrueEndGate)，
+///   全部達成 → 開門 (門後的 ClearGoal = 真結局，暫時跟 BE 一樣)，沒達成 → 直接播 BE
 /// - 二周目 transform (終端機右半邊)：在目前房間生成一周目記錄的電池，每個房間一次，使用紀錄跟著快照存
 /// 其他腳本透過 GameManager.Instance 呼叫。
 /// </summary>
@@ -30,6 +32,8 @@ public class GameManager : MonoBehaviour
     public CinemachineCamera vcam;
     [Tooltip("二周目通關時播的 end 動畫")]
     public EndingUI ending;
+    [Tooltip("最後房間 (room 6) 的真結局門。沒指定就沒有條件判斷 (二周目進最後的房間一律 BE)")]
+    public TrueEndGate trueEndGate;
 
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
@@ -72,6 +76,8 @@ public class GameManager : MonoBehaviour
     /// <summary>所有房間，依 x 座標由左到右 (= room1, room2...)。</summary>
     public IReadOnlyList<MapArea> Rooms => rooms;
     public string CurrentRoomId => data.currentRoomId;
+    /// <summary>最後的房間 (最右邊 = room 6)：一周目進來就通關，二周目進來結算真結局條件。</summary>
+    public MapArea FinalRoom => rooms.Count > 0 ? rooms[rooms.Count - 1] : null;
     public Inventory Inventory { get; private set; }
     /// <summary>第幾周目 (1 / 2)。</summary>
     public int Loop => data.loop;
@@ -145,6 +151,12 @@ public class GameManager : MonoBehaviour
             Inventory.ReadFrom(snapshot);
             recallUsedAreas.Clear();
             recallUsedAreas.UnionWith(snapshot.recallUsedAreas);
+            if (FinalRoom != null && snapshot.roomId == FinalRoom.Id)
+            {
+                // 讀檔 / 死亡重載到最後的房間：套用當初進房間時的結算，等淡入完再處理 (一周目 = 再通關一次、二周目沒達成 = BE)
+                if (trueEndGate != null && data.loop >= 2) trueEndGate.ApplyRecord(snapshot.targetResults);
+                StartCoroutine(ArriveFinalRoomAfterFade());
+            }
         }
         StateChanged?.Invoke();
     }
@@ -269,7 +281,7 @@ public class GameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 通關 (ClearGoal 呼叫)。一周目：記錄玩家生成的電池位置 → 建立全新的 save2 (舊的 save2 被覆蓋) → 從頭開始二周目。
+    /// 通關 (一周目：進入最後的房間；二周目：最後房間條件沒達成，或門後的 ClearGoal)。一周目：記錄玩家生成的電池位置 → 建立全新的 save2 (舊的 save2 被覆蓋) → 從頭開始二周目。
     /// save1 保留通關當下的狀態，之後可以從標題畫面讀 save1 回去重玩一周目。二周目：播 end 動畫，按任意鍵回標題。
     /// </summary>
     public void ClearGame()
@@ -365,13 +377,43 @@ public class GameManager : MonoBehaviour
         if (fader != null) yield return fader.FadeOut();
 
         player.Teleport(position);
-        EnterRoom(MapArea.Find(position), position);
+        var room = MapArea.Find(position);
+        EnterRoom(room, position);
+        bool final = room != null && room == FinalRoom;
+        if (final) RecordTargets(room);
         yield return null; // 讓 CameraAreaFollower 切換鏡頭範圍並定位
 
         player.SetFrozen(false);
         GameInput.Locked = false;
         transitioning = false;
         if (fader != null) yield return fader.FadeIn();
+        if (final) ArriveFinalRoom();
+    }
+
+    // ---------- 最後的房間 (room 6) ----------
+
+    /// <summary>二周目剛進最後的房間：結算 [Target] 條件 → 存進這個房間的快照 → 開門 (全部達成時)。</summary>
+    void RecordTargets(MapArea room)
+    {
+        if (data.loop < 2 || trueEndGate == null) return;
+        var results = trueEndGate.Evaluate();
+        var snapshot = data.FindSnapshot(room.Id);
+        if (snapshot != null) snapshot.targetResults = results;
+        Save();
+        trueEndGate.ApplyRecord(results);
+    }
+
+    /// <summary>到達最後的房間：一周目 = 通關 (clearLoop1 → 二周目)；二周目條件沒達成 = 播 BE。達成的話門已經開了，門後的 ClearGoal 才是真結局。</summary>
+    void ArriveFinalRoom()
+    {
+        if (data.loop < 2) ClearGame();
+        else if (trueEndGate == null || !trueEndGate.AllRecorded) ClearGame(); // 二周目的 ClearGame = BE (真結局還沒做，暫時共用)
+    }
+
+    IEnumerator ArriveFinalRoomAfterFade()
+    {
+        yield return new WaitForSecondsRealtime(fader != null ? fader.duration : 0f);
+        ArriveFinalRoom();
     }
 
     IEnumerator DeathRoutine()

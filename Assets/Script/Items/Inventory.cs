@@ -27,6 +27,12 @@ public class Inventory : MonoBehaviour
     ItemInstance[] slots;
 
     public event Action Changed;
+
+    /// <summary>除錯用 (DebugTools F1)：無限道具。開著時 Consume 不扣次數，次數 0 的道具補回來。static，Play 開始時重置。</summary>
+    public static bool InfiniteUses { get; set; }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => InfiniteUses = false;
     /// <summary>鎖定時不能選格、切換、拖曳交換。目前沒有地方使用 (操控無人機時也能切換格子)，留給之後需要時用。</summary>
     public bool Locked { get; set; }
     public int SlotCount => slots.Length;
@@ -85,13 +91,21 @@ public class Inventory : MonoBehaviour
     /// <summary>扣 1 次 (最低到 0，道具保留在格子裡)。</summary>
     public void Consume(ItemInstance item)
     {
-        if (item == null || item.uses <= 0) return;
+        if (item == null || item.uses <= 0 || InfiniteUses) return;
         item.uses--;
         Changed?.Invoke();
     }
 
     /// <summary>這格的道具固定不能移動 (ItemDefinition.Pinned)。</summary>
     public bool IsPinned(int index) => slots[index] != null && slots[index].definition.Pinned;
+
+    /// <summary>次數 0 的道具補回開局次數 (至少 1)。無限道具開啟 / 讀檔時用。</summary>
+    public void RefillEmpty()
+    {
+        foreach (var s in slots)
+            if (s != null && s.uses <= 0) s.uses = Mathf.Max(1, s.definition.startingUses);
+        Changed?.Invoke();
+    }
 
     public void Swap(int a, int b)
     {
@@ -133,6 +147,7 @@ public class Inventory : MonoBehaviour
             if (def != null) slots[i] = new ItemInstance(def, data.items[i].uses);
         }
         Selected = Mathf.Clamp(data.selectedSlot, 0, slots.Length - 1);
+        if (InfiniteUses) RefillEmpty(); // 死亡重載回到次數 0 的快照時
         Changed?.Invoke();
     }
 }
