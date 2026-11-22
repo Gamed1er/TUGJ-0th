@@ -67,7 +67,30 @@ public static class GameInput
     public static bool UseHeld { get { Init(); return !Locked && use.IsPressed(); } }
     /// <summary>R：回到目前的重生點。</summary>
     public static bool RestartPressed { get { Init(); return !Locked && restart.WasPressedThisFrame(); } }
+    /// <summary>M：開關終端機 (跟點工作列的終端機圖示一樣)。</summary>
     public static bool MapPressed { get { Init(); return map.WasPressedThisFrame(); } }
+
+    // ---------- 選單 (終端機) 操作：不受 Locked 影響 ----------
+
+    static bool KeyPressed(Key a, Key b)
+    {
+        var kb = Keyboard.current;
+        return kb != null && (kb[a].wasPressedThisFrame || kb[b].wasPressedThisFrame);
+    }
+
+    /// <summary>選單上下左右 (WASD / 方向鍵) 這幀被按下的方向，沒有 = (0, 0)。上 = y +1。</summary>
+    public static Vector2Int MenuMove =>
+        KeyPressed(Key.W, Key.UpArrow) ? Vector2Int.up
+        : KeyPressed(Key.S, Key.DownArrow) ? Vector2Int.down
+        : KeyPressed(Key.A, Key.LeftArrow) ? Vector2Int.left
+        : KeyPressed(Key.D, Key.RightArrow) ? Vector2Int.right
+        : Vector2Int.zero;
+
+    /// <summary>Enter：選單確定。</summary>
+    public static bool SubmitPressed => KeyPressed(Key.Enter, Key.NumpadEnter);
+
+    /// <summary>Esc：選單返回 / 關閉。</summary>
+    public static bool CancelPressed => KeyPressed(Key.Escape, Key.Escape);
 
     /// <summary>滾輪：往上 = -1 (前一格)，往下 = +1 (下一格)，沒滾 = 0。</summary>
     public static int ScrollStep

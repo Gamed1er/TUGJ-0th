@@ -8,9 +8,10 @@ using UnityEngine;
 /// 可以被無人機吊起來 (SetCarried)：吊著時是 Kinematic、跟著無人機、不受黑洞影響。玩家可以站在吊著的電池上 (站久了無人機會墜機，見 Drone)。
 /// 跟無人機永遠不碰撞 (Drone 生成時會設定，這裡處理電池比無人機晚生成的情況)。
 ///
-/// 爆炸 (Explode)：被平台擠壓 (MovingPlatform)、連鎖、請輸入文本生成時重疊 → 立刻爆炸。
+/// 爆炸 (Explode)：被平台擠壓 (MovingPlatform)、二周目 transform 生成時重疊 → 立刻爆炸。
 /// 被火箭尾氣噴到 (PlayerRocket，rocketProof 的不會) → 先點燃引信 (StartFuse)：閃紅 + 頭上顯示倒數 + 火花，fuseTime 秒後爆炸。
-/// 範圍內的玩家、沒電的無人機被往外推；範圍內的其他電池延遲 chainDelay 秒後連鎖爆炸。
+/// 範圍內的玩家、沒電的無人機被往外推；範圍內的其他電池先被往外推 (吊著的不會)，延遲 chainDelay 秒後連鎖爆炸。
+/// 吊著的電池也會爆炸 (擠壓、火箭、連鎖)，爆炸後無人機手上變空 (Drone.ReleaseCarried)。
 /// 範圍內的可破壞方塊 (Breakable) 被破壞 (隔牆也會)。不會炸死玩家。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
@@ -104,6 +105,7 @@ public class Battery : MonoBehaviour
     {
         if (exploded) return;
         exploded = true;
+        if (IsCarried) foreach (var d in Drone.All) d.ReleaseCarried(this);
 
         Vector2 center = rb.position;
         if (explosionFx != null) Instantiate(explosionFx, center, Quaternion.identity);
@@ -117,7 +119,11 @@ public class Battery : MonoBehaviour
             var battery = c.GetComponentInParent<Battery>();
             if (battery != null)
             {
-                if (battery != this && done.Add(battery)) battery.ExplodeAfter(chainDelay); // 連鎖
+                if (battery != this && done.Add(battery))
+                {
+                    if (!battery.IsCarried) battery.rb.linearVelocity += Knockback(center, battery.rb.position); // 先被炸飛
+                    battery.ExplodeAfter(chainDelay); // 再連鎖爆炸
+                }
                 continue;
             }
             var player = c.GetComponent<PlayerController>();

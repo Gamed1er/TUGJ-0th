@@ -22,7 +22,7 @@ public class ItemInstance
 /// </summary>
 public class Inventory : MonoBehaviour
 {
-    [Range(1, 9)] [SerializeField] int slotCount = 6;
+    [Range(1, 9)] [SerializeField] int slotCount = 5;
 
     ItemInstance[] slots;
 
@@ -112,7 +112,7 @@ public class Inventory : MonoBehaviour
 
     // ---------- 存讀檔 ----------
 
-    public void WriteTo(NodeSnapshot data)
+    public void WriteTo(RoomSnapshot data)
     {
         data.items.Clear();
         foreach (var s in slots)
@@ -120,7 +120,7 @@ public class Inventory : MonoBehaviour
         data.selectedSlot = Selected;
     }
 
-    public void ReadFrom(NodeSnapshot data)
+    public void ReadFrom(RoomSnapshot data)
     {
         Array.Clear(slots, 0, slots.Length);
         for (int i = 0; i < data.items.Count && i < slots.Length; i++)

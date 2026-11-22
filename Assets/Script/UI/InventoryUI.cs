@@ -1,28 +1,21 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 物品欄畫面。依 Inventory 的格數自動生成 slotPrefab，監聽 Changed 事件刷新。
-/// 格子排版交給 container 上的 HorizontalLayoutGroup。
+/// 物品欄畫面 (工作列上的 5 格)。格子 (InventorySlotUI) 直接擺在場景裡、依序拖進 slots，監聽 Changed 事件刷新。
+/// 格子數要跟 Inventory 的 slotCount 一樣。
 /// </summary>
 public class InventoryUI : MonoBehaviour
 {
     [SerializeField] Inventory inventory;
-    [SerializeField] InventorySlotUI slotPrefab;
-    [SerializeField] RectTransform container;
-
-    readonly List<InventorySlotUI> slots = new List<InventorySlotUI>();
+    [SerializeField] InventorySlotUI[] slots;
 
     public Inventory Inventory => inventory;
 
     void Start()
     {
-        for (int i = 0; i < inventory.SlotCount; i++)
-        {
-            var slot = Instantiate(slotPrefab, container);
-            slot.Init(this, i);
-            slots.Add(slot);
-        }
+        if (slots.Length != inventory.SlotCount)
+            Debug.LogWarning($"InventoryUI 有 {slots.Length} 格，但 Inventory 有 {inventory.SlotCount} 格", this);
+        for (int i = 0; i < slots.Length; i++) slots[i].Init(this, i);
         inventory.Changed += Refresh;
         Refresh();
     }
@@ -34,7 +27,7 @@ public class InventoryUI : MonoBehaviour
 
     void Refresh()
     {
-        for (int i = 0; i < slots.Count; i++)
-            slots[i].Refresh(inventory.Get(i), i == inventory.Selected);
+        for (int i = 0; i < slots.Length; i++)
+            slots[i].Refresh(i < inventory.SlotCount ? inventory.Get(i) : null, i == inventory.Selected);
     }
 }

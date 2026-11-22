@@ -9,7 +9,9 @@ using UnityEngine;
 /// 拉一次拉桿、或放下吊著的電池 → 立刻沒電 (不另外扣次數)。
 /// 跟玩家、電池永遠不碰撞；跟地形、門、平台會碰撞。切換地圖 / 死亡重載時全部消失。
 /// 操控的開始與結束 (鏡頭、物品欄鎖定) 在 BeginControl / EndControl。
+/// 吊起電池：電池移到正下方 (carryOffset)；那裡被擋住 → 無人機往上移 (最多 maxLift 格)，還是放不下 → 提示不能搬運。
 /// 吊著電池時玩家可以站在電池上 (會被帶著走)，連續站滿 crashTime 秒 → 放開電池並墜機 (= 沒電往下掉)。
+/// 吊著的電池爆炸 (擠壓、火箭、連鎖) → 手上變空，無人機仍有電 (ReleaseCarried)。
 /// 外觀：待機 = openSprite、操控中 = 循環播 flyFrames、沒電 = closeSprite + 黑白材質。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D))]
@@ -32,8 +34,10 @@ public class Drone : MonoBehaviour
     [Header("互動")]
     [Tooltip("可以吊起電池的距離 (格)")]
     public float batteryRange = 1.2f;
-    [Tooltip("吊著的電池相對於無人機的位置 (吊起時那裡被擋住，就維持電池原本的相對位置)")]
+    [Tooltip("吊著的電池相對於無人機的位置 (正下方)")]
     public Vector2 carryOffset = new Vector2(0f, -0.8f);
+    [Tooltip("吊起時電池的位置被擋住，無人機最多往上移幾格來騰出空間")]
+    public float maxLift = 1f;
 
     [Header("墜機")]
     [Tooltip("玩家站在吊著的電池上幾秒後墜機")]
@@ -59,7 +63,6 @@ public class Drone : MonoBehaviour
     Collider2D col;
     MapArea area;
     Battery carried;
-    Vector2 carryLocal; // 這次吊起時實際使用的相對位置
     Vector2 lastPull;
     float standTimer;   // 玩家站在吊著的電池上的時間
     float animTimer;
@@ -181,11 +184,36 @@ public class Drone : MonoBehaviour
         }
         else if (battery != null)
         {
+            TryPickUp(battery);
+        }
+    }
+
+    /// <summary>吊起電池：電池放到正下方；被擋住就把無人機往上移 (每次 0.05 格，最多 maxLift)，都不行 → 提示。</summary>
+    void TryPickUp(Battery battery)
+    {
+        for (float lift = 0f; lift <= maxLift + 0.001f; lift += 0.05f)
+        {
+            Vector2 dronePos = rb.position + Vector2.up * lift;
+            if (lift > 0f && (!DroneSpotFree(dronePos) || !InsideArea(dronePos))) break; // 上面被擋住了，不能再往上
+            if (!CarrySpotFree(battery, dronePos + carryOffset)) continue;
+
+            rb.position = dronePos;
+            transform.position = dronePos;
             carried = battery;
             carried.SetCarried(true);
-            // 正下方有空間才把電池移過去，否則維持原本的相對位置 (避免把電池塞進牆裡)
-            carryLocal = CarrySpotFree(rb.position + carryOffset) ? carryOffset : carried.Body.position - rb.position;
+            carried.Body.position = dronePos + carryOffset;
+            carried.transform.position = dronePos + carryOffset;
+            return;
         }
+        ItemStatusUI.Hint("目前空間不能搬運電池");
+    }
+
+    /// <summary>吊著的電池爆炸了 (Battery.Explode 呼叫)：手上變空，無人機保持有電。</summary>
+    public void ReleaseCarried(Battery battery)
+    {
+        if (carried != battery) return;
+        carried = null;
+        standTimer = 0f;
     }
 
     void FixedUpdate()
@@ -220,7 +248,7 @@ public class Drone : MonoBehaviour
         rb.linearVelocity = v;
         if (carried != null)
         {
-            carried.Body.MovePosition(rb.position + v * dt + carryLocal);
+            carried.Body.MovePosition(rb.position + v * dt + carryOffset);
             CarryRider(v * dt);
         }
         else standTimer = 0f;
@@ -283,13 +311,30 @@ public class Drone : MonoBehaviour
         return false;
     }
 
-    /// <summary>電池放在 position 會不會跟地形 / 門 / 平台重疊。</summary>
-    bool CarrySpotFree(Vector2 position)
+    /// <summary>電池放在 position 會不會跟地形 / 門 / 平台 / 其他電池重疊。</summary>
+    bool CarrySpotFree(Battery battery, Vector2 position)
     {
         var filter = new ContactFilter2D { useTriggers = false };
         filter.SetLayerMask(blockMask);
-        Vector2 size = (Vector2)carried.Collider.bounds.size - Vector2.one * 0.05f;
+        Vector2 size = (Vector2)battery.Collider.bounds.size - Vector2.one * 0.05f;
         int n = Physics2D.OverlapBox(position, size, 0f, filter, overlap);
+        for (int i = 0; i < n; i++)
+        {
+            var c = overlap[i];
+            if (c == col || c == battery.Collider) continue;
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>無人機本體放在 position 會不會跟地形 / 門 / 平台重疊 (電池不算，本來就互相穿過)。</summary>
+    bool DroneSpotFree(Vector2 position)
+    {
+        var filter = new ContactFilter2D { useTriggers = false };
+        filter.SetLayerMask(blockMask);
+        Vector2 size = (Vector2)col.bounds.size - Vector2.one * 0.05f;
+        Vector2 center = position + ((Vector2)col.bounds.center - rb.position);
+        int n = Physics2D.OverlapBox(center, size, 0f, filter, overlap);
         for (int i = 0; i < n; i++)
         {
             var c = overlap[i];
@@ -297,6 +342,13 @@ public class Drone : MonoBehaviour
             return false;
         }
         return true;
+    }
+
+    bool InsideArea(Vector2 position)
+    {
+        if (area == null) return true;
+        Bounds b = area.Bounds.bounds;
+        return position.y + col.bounds.extents.y <= b.max.y;
     }
 
     void DepletedMove()

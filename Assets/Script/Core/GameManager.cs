@@ -8,11 +8,11 @@ using UnityEngine.Tilemaps;
 
 /// <summary>
 /// 遊戲場景的總管 (每個 Game 場景一個)。負責：
-/// - 進場時讀檔並套用 (玩家位置 = 目前節點、物品欄 = 目前節點的快照、節點狀態)
-/// - 自動存檔 (EnterNode)、地圖回溯 (RewindTo)
-/// - 死亡 → 淡出 → 重新載入場景 (= 回到目前節點的快照)；R 鍵 (RestartAtNode) 也一樣
-/// - 通關 (ClearGame)：一周目 → 記錄電池位置、清空節點紀錄、從頭開始二周目
-/// - 二周目「請輸入文本」各區段的使用紀錄 (跟物品欄一起存進節點快照)
+/// - 進場時讀檔並套用 (玩家位置 = 目前房間的重生點、物品欄 = 目前房間的快照)
+/// - 自動存檔：每進入一個房間 (MapArea，經過 MapEdge 轉場) 就存檔 (EnterRoom)；讀檔 = 終端機點房間 (RewindTo)
+/// - 死亡 → 淡出 → 重新載入場景 (= 回到目前房間的快照)；R 鍵 (RestartAtNode) 也一樣
+/// - 通關 (ClearGame)：一周目 → 記錄電池位置、建立 save2、從頭開始二周目
+/// - 二周目 transform (終端機右半邊)：在目前房間生成一周目記錄的電池，每個房間一次，使用紀錄跟著快照存
 /// 其他腳本透過 GameManager.Instance 呼叫。
 /// </summary>
 public class GameManager : MonoBehaviour
@@ -21,9 +21,9 @@ public class GameManager : MonoBehaviour
 
     [Header("場景參照")]
     public PlayerController player;
-    [Tooltip("新遊戲 (還沒存過檔) 的出生點")]
+    [Tooltip("新遊戲 (還沒存過檔) 的出生點，要放在 room1 裡")]
     public Transform playerStart;
-    [Tooltip("地圖 UI 用來計算世界範圍的 Tilemap")]
+    [Tooltip("沒有 MapArea 時用來計算世界範圍的 Tilemap")]
     public Tilemap boundsTilemap;
     public ScreenFader fader;
     [Tooltip("跟隨玩家的鏡頭 (操控無人機時改跟無人機)")]
@@ -32,30 +32,40 @@ public class GameManager : MonoBehaviour
     [Header("道具")]
     [Tooltip("開新遊戲時的物品欄 (依序放進第 1、2、3... 格)")]
     public List<ItemDefinition> startingItems = new List<ItemDefinition>();
-    [Tooltip("二周目開局額外多的道具 (接在 startingItems 後面)")]
-    public List<ItemDefinition> secondLoopItems = new List<ItemDefinition>();
+
+    [Header("二周目 transform")]
+    [Tooltip("transform 生成的電池")]
+    public GameObject recallBatteryPrefab;
+    [Tooltip("每顆電池生成時的特效 (自己播完自己消失)")]
+    public GameObject recallSpawnFx;
+    [Tooltip("重疊判定的大小 (比電池小一點，剛好貼著牆不算)。跟實體重疊的電池生成後立刻爆炸")]
+    public Vector2 recallOverlapSize = new Vector2(0.8f, 0.8f);
 
     [Header("規則")]
-    [Tooltip("勾選 = 死亡後道具恢復成目前節點的快照 (A)\n取消 = 死亡後道具維持已消耗，並寫回目前節點的快照 (B)")]
+    [Tooltip("勾選 = 死亡後道具恢復成目前房間的快照 (A)\n取消 = 死亡後道具維持已消耗，並寫回目前房間的快照 (B)")]
     public bool restoreItemsOnDeath = true;
 
     /// <summary>除錯用：無敵。</summary>
     public bool Invincible { get; set; }
 
-    /// <summary>存檔點被發現、存檔、停用時觸發 (地圖 UI 監聽)。</summary>
+    /// <summary>存檔、讀檔、transform 時觸發 (終端機監聽)。</summary>
     public event Action StateChanged;
 
-    public IReadOnlyList<SavePoint> SavePoints => savePoints;
-    public string CurrentSavePointId => data.currentNodeId;
+    /// <summary>所有房間，依 x 座標由左到右 (= room1, room2...)。</summary>
+    public IReadOnlyList<MapArea> Rooms => rooms;
+    public string CurrentRoomId => data.currentRoomId;
     public Inventory Inventory { get; private set; }
     /// <summary>第幾周目 (1 / 2)。</summary>
     public int Loop => data.loop;
     /// <summary>一周目通關時記錄的電池位置。</summary>
     public IReadOnlyList<Vector2> BatteryRecords => data.batteryRecords;
+    /// <summary>死亡、轉場、切場景中 (不能開終端機)。</summary>
+    public bool Busy => dying || transitioning;
 
-    readonly List<SavePoint> savePoints = new List<SavePoint>();
-    /// <summary>目前這條時間線上已經用過「請輸入文本」的區段 (跟物品欄一起存進節點快照)。</summary>
+    readonly List<MapArea> rooms = new List<MapArea>();
+    /// <summary>目前這條時間線上已經用過 transform 的房間 (跟物品欄一起存進房間快照)。</summary>
     readonly HashSet<string> recallUsedAreas = new HashSet<string>();
+    static readonly Collider2D[] overlap = new Collider2D[1];
     SaveData data;
     bool dying;
     bool transitioning;
@@ -66,13 +76,11 @@ public class GameManager : MonoBehaviour
         Inventory = player.GetComponent<Inventory>();
         data = SaveSystem.Load(SaveSystem.CurrentSlot) ?? new SaveData(); // Awake 就讀，其他腳本的 Start 才拿得到 Loop 等資料
 
+        rooms.AddRange(FindObjectsByType<MapArea>(FindObjectsSortMode.None));
+        rooms.Sort((a, b) => a.Bounds.bounds.min.x.CompareTo(b.Bounds.bounds.min.x));
         var ids = new HashSet<string>();
-        foreach (var sp in FindObjectsByType<SavePoint>(FindObjectsSortMode.None))
-        {
-            if (!ids.Add(sp.Id)) Debug.LogError($"存檔點 ID 重複: {sp.Id} ({sp.name})，請 Regenerate ID", sp);
-            savePoints.Add(sp);
-        }
-        savePoints.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+        foreach (var r in rooms)
+            if (!ids.Add(r.Id)) Debug.LogError($"MapArea 名稱重複: {r.Id}，請改名", r);
     }
 
     void Start()
@@ -91,154 +99,169 @@ public class GameManager : MonoBehaviour
         if (GameInput.RestartPressed) RestartAtNode();
     }
 
-    /// <summary>R 鍵：立刻回到目前的重生點 (= 地圖上對目前節點讀檔；還沒到過節點就回到出生點)。</summary>
+    /// <summary>R 鍵：立刻回到目前的重生點 (= 對目前房間讀檔)。</summary>
     public void RestartAtNode()
     {
-        if (dying || transitioning) return;
+        if (Busy) return;
         transitioning = true;
         StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     void ApplySaveData()
     {
-        // 節點狀態
-        foreach (var sp in savePoints)
-            sp.SetState(data.discoveredSavePoints.Contains(sp.Id), !data.disabledSavePoints.Contains(sp.Id));
-
-        // 玩家位置
-        var node = FindSavePoint(data.currentNodeId);
-        player.Teleport(node != null ? node.SpawnPosition : (Vector2)playerStart.position);
-
-        // 物品欄：目前節點的快照；沒有 (新遊戲) → 發開局道具
-        var snapshot = node != null ? data.FindSnapshot(node.Id) : null;
-        if (snapshot == null || snapshot.items.Count == 0) Inventory.SetItems(StartingItemsForLoop());
-        else Inventory.ReadFrom(snapshot);
-
-        recallUsedAreas.Clear();
-        if (snapshot != null) recallUsedAreas.UnionWith(snapshot.recallUsedAreas);
+        var snapshot = data.FindSnapshot(data.currentRoomId);
+        if (snapshot == null)
+        {
+            // 新遊戲 (或周目開始)：PlayerStart + 開局道具，立刻在 room1 存檔
+            player.Teleport(playerStart.position);
+            Inventory.SetItems(startingItems);
+            recallUsedAreas.Clear();
+            var area = MapArea.Find(playerStart.position);
+            if (area != null) EnterRoom(area, playerStart.position, silent: true);
+        }
+        else
+        {
+            player.Teleport(snapshot.spawn);
+            Inventory.ReadFrom(snapshot);
+            recallUsedAreas.Clear();
+            recallUsedAreas.UnionWith(snapshot.recallUsedAreas);
+        }
         StateChanged?.Invoke();
     }
 
-    List<ItemDefinition> StartingItemsForLoop()
+    /// <summary>物品欄 + transform 的使用紀錄 + 重生位置 → 寫進房間快照。</summary>
+    void WriteSnapshot(string roomId, Vector2 spawn)
     {
-        var list = new List<ItemDefinition>(startingItems);
-        if (data.loop >= 2) list.AddRange(secondLoopItems);
-        return list;
-    }
-
-    /// <summary>物品欄 + 請輸入文本的使用紀錄 → 寫進節點快照。</summary>
-    void WriteSnapshot(string nodeId)
-    {
-        var snapshot = data.GetOrCreateSnapshot(nodeId);
+        var snapshot = data.GetOrCreateSnapshot(roomId);
+        snapshot.spawn = spawn;
         Inventory.WriteTo(snapshot);
         snapshot.recallUsedAreas = new List<string>(recallUsedAreas);
+    }
+
+    void Save() => SaveSystem.Save(SaveSystem.CurrentSlot, data);
+
+    // ---------- 房間 (自動存檔) ----------
+
+    /// <summary>房間的順序 (0 = room1)；找不到回傳 -1。</summary>
+    public int RoomIndex(string id) => rooms.FindIndex(r => r.Id == id);
+
+    public MapArea FindRoom(string id) => rooms.Find(r => r.Id == id);
+
+    public bool IsDiscovered(MapArea room) => data.discoveredRooms.Contains(room.Id);
+
+    public bool HasSnapshot(MapArea room) => data.FindSnapshot(room.Id) != null;
+
+    /// <summary>
+    /// 進入房間 (轉場落地後呼叫)。往前推進 (或這個房間還沒有快照) → 覆蓋快照、刪掉後面房間的快照 (新的時間線)；
+    /// 往回走 → 只把重生房間改成這裡。
+    /// </summary>
+    void EnterRoom(MapArea room, Vector2 spawn, bool silent = false)
+    {
+        if (room == null || room.Id == data.currentRoomId) return;
+        if (!data.discoveredRooms.Contains(room.Id)) data.discoveredRooms.Add(room.Id);
+
+        bool forward = RoomIndex(room.Id) > RoomIndex(data.currentRoomId) || !HasSnapshot(room);
+        data.currentRoomId = room.Id;
+        if (forward)
+        {
+            WriteSnapshot(room.Id, spawn);
+            int order = RoomIndex(room.Id);
+            data.snapshots.RemoveAll(s => RoomIndex(s.roomId) > order);
+        }
+        Save();
+        if (forward && !silent) ToastUI.Show("已存檔");
+        StateChanged?.Invoke();
+    }
+
+    /// <summary>可以從終端機讀這個房間嗎 (有快照)。</summary>
+    public bool CanRewindTo(MapArea room) => room != null && HasSnapshot(room);
+
+    /// <summary>讀檔：重生房間改成該房間 → 重載場景 (物品欄回到該房間的快照)。後面房間的快照先保留，等玩家往前推進時才作廢。</summary>
+    public void RewindTo(MapArea room)
+    {
+        if (!CanRewindTo(room) || Busy) return;
+        transitioning = true;
+        data.currentRoomId = room.Id;
+        Save();
+        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
     }
 
     // ---------- 二周目 ----------
 
     public bool IsRecallUsed(MapArea area) => area != null && recallUsedAreas.Contains(area.Id);
 
-    public void MarkRecallUsed(MapArea area)
+    /// <summary>這個房間有沒有一周目留下的電池紀錄。</summary>
+    public bool HasRecords(MapArea area)
     {
-        if (area != null) recallUsedAreas.Add(area.Id);
+        if (area == null) return false;
+        foreach (var p in data.batteryRecords) if (area.Contains(p)) return true;
+        return false;
+    }
+
+    /// <summary>玩家目前所在的房間。</summary>
+    public MapArea PlayerRoom => MapArea.Find(player.Body.position);
+
+    /// <summary>
+    /// transform：在 area 生成一周目記錄的電池 (只能對玩家目前所在的房間用，每個房間一次)。
+    /// 生成位置跟實體 (地形、門、平台、其他電池、玩家、無人機) 重疊 → 那顆立刻爆炸。
+    /// </summary>
+    public bool Recall(MapArea area)
+    {
+        if (data.loop < 2 || area == null || area != PlayerRoom || IsRecallUsed(area) || recallBatteryPrefab == null) return false;
+        var spots = new List<Vector2>();
+        foreach (var p in data.batteryRecords) if (area.Contains(p)) spots.Add(p);
+        if (spots.Count == 0) return false;
+
+        recallUsedAreas.Add(area.Id);
+        var filter = new ContactFilter2D { useTriggers = false };
+        foreach (var p in spots)
+        {
+            bool blocked = Physics2D.OverlapBox(p, recallOverlapSize, 0f, filter, overlap) > 0;
+            var battery = Instantiate(recallBatteryPrefab, p, Quaternion.identity).GetComponent<Battery>();
+            if (recallSpawnFx != null) Instantiate(recallSpawnFx, p, Quaternion.identity);
+            if (blocked) battery.Explode();
+        }
+        StateChanged?.Invoke();
+        return true;
     }
 
     /// <summary>
-    /// 通關 (ClearGoal 呼叫)。一周目：記錄玩家生成的電池位置 → 清空所有節點紀錄 → 從頭開始二周目 (回不去一周目)。
-    /// 二周目：只顯示「通關」。
+    /// 通關 (ClearGoal 呼叫)。一周目：記錄玩家生成的電池位置 → 建立全新的 save2 (舊的 save2 被覆蓋) → 從頭開始二周目。
+    /// save1 保留通關當下的狀態，之後可以從標題畫面讀 save1 回去重玩一周目。二周目：只顯示「通關」。
     /// </summary>
     public void ClearGame()
     {
-        if (dying || transitioning) return;
+        if (Busy) return;
         if (data.loop >= 2)
         {
             ToastUI.Show("通關");
             return;
         }
 
-        data.batteryRecords.Clear();
+        Save(); // save1 留著
+        var next = new SaveData { loop = 2 };
         foreach (var b in Battery.All)
-            if (b.SpawnedByPlayer) data.batteryRecords.Add(b.Body.position);
+            if (b.SpawnedByPlayer) next.batteryRecords.Add(b.Body.position);
+        SaveSystem.Save(SaveSystem.Save2, next);
+        SaveSystem.CurrentSlot = SaveSystem.Save2;
 
-        data.loop = 2;
-        data.currentNodeId = "";
-        data.snapshots.Clear();
-        data.discoveredSavePoints.Clear();
-        data.disabledSavePoints.Clear();
-        SaveSystem.Save(SaveSystem.CurrentSlot, data);
         ToastUI.Show("一周目通關");
         transitioning = true;
         StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
-    }
-
-    public SavePoint FindSavePoint(string id) => savePoints.Find(sp => sp.Id == id);
-
-    /// <summary>節點的前後順序 (savePoints 已依 x 排序)；找不到回傳 -1。</summary>
-    int NodeOrder(string id) => savePoints.FindIndex(sp => sp.Id == id);
-
-    public bool HasSnapshot(SavePoint sp) => data.FindSnapshot(sp.Id) != null;
-
-    // ---------- 節點 (自動存檔) ----------
-
-    /// <summary>玩家走進節點 (SavePoint 呼叫)。</summary>
-    public void EnterNode(SavePoint sp)
-    {
-        if (dying || transitioning || !sp.IsActive || sp.Id == data.currentNodeId) return;
-
-        if (!data.discoveredSavePoints.Contains(sp.Id))
-        {
-            data.discoveredSavePoints.Add(sp.Id);
-            sp.SetState(true, sp.IsActive);
-        }
-
-        // 往前推進 (或這個節點還沒有快照) → 覆蓋快照；往回走 → 只更新重生點
-        bool forward = NodeOrder(sp.Id) > NodeOrder(data.currentNodeId) || !HasSnapshot(sp);
-        data.currentNodeId = sp.Id;
-        if (forward)
-        {
-            WriteSnapshot(sp.Id);
-            // 新的時間線：這個節點之後的紀錄全部作廢 (打通前面的關卡 → 後面關卡的紀錄被覆蓋，不能再回溯過去)
-            int order = NodeOrder(sp.Id);
-            data.snapshots.RemoveAll(s => NodeOrder(s.nodeId) > order);
-        }
-        SaveSystem.Save(SaveSystem.CurrentSlot, data);
-        if (forward) ToastUI.Show("已存檔");
-        StateChanged?.Invoke();
-    }
-
-    /// <summary>可以從地圖回溯到這個節點嗎 (去過、沒被停用、有快照)。</summary>
-    public bool CanRewindTo(SavePoint sp) => sp.Discovered && sp.IsActive && HasSnapshot(sp);
-
-    /// <summary>回溯：重生點改成該節點 → 重載場景 (物品欄回到該節點的快照)。後面節點的快照先保留，等玩家往前推進到下一個節點時才作廢。</summary>
-    public void RewindTo(SavePoint sp)
-    {
-        if (!CanRewindTo(sp) || dying || transitioning) return;
-        data.currentNodeId = sp.Id;
-        SaveSystem.Save(SaveSystem.CurrentSlot, data);
-        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
-    }
-
-    /// <summary>停用 (消耗) 一個節點。預留給企劃的 trick 用，會立即寫入存檔。</summary>
-    public void DisableSavePoint(SavePoint sp)
-    {
-        if (!data.disabledSavePoints.Contains(sp.Id)) data.disabledSavePoints.Add(sp.Id);
-        sp.SetState(sp.Discovered, false);
-        SaveSystem.Save(SaveSystem.CurrentSlot, data);
-        StateChanged?.Invoke();
     }
 
     // ---------- 死亡 / 轉場 ----------
 
     public void KillPlayer()
     {
-        if (dying || transitioning || Invincible) return;
+        if (Busy || Invincible) return;
         StartCoroutine(DeathRoutine());
     }
 
-    /// <summary>地圖轉場：黑畫面 → 把玩家移到 position → 淡入。由 MapEdge 呼叫。</summary>
+    /// <summary>地圖轉場：黑畫面 → 把玩家移到 position → 存檔 (進入新房間) → 淡入。由 MapEdge 呼叫。</summary>
     public void TransitionTo(Vector2 position)
     {
-        if (dying || transitioning) return;
+        if (Busy) return;
         StartCoroutine(TransitionRoutine(position));
     }
 
@@ -257,6 +280,7 @@ public class GameManager : MonoBehaviour
         if (fader != null) yield return fader.FadeOut();
 
         player.Teleport(position);
+        EnterRoom(MapArea.Find(position), position);
         yield return null; // 讓 CameraAreaFollower 切換鏡頭範圍並定位
 
         player.SetFrozen(false);
@@ -272,11 +296,12 @@ public class GameManager : MonoBehaviour
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();
 
-        if (!restoreItemsOnDeath && !string.IsNullOrEmpty(data.currentNodeId))
+        var snapshot = data.FindSnapshot(data.currentRoomId);
+        if (!restoreItemsOnDeath && snapshot != null)
         {
-            // 規則 B：把目前 (已消耗的) 物品欄寫回目前節點的快照，位置仍是目前節點
-            WriteSnapshot(data.currentNodeId);
-            SaveSystem.Save(SaveSystem.CurrentSlot, data);
+            // 規則 B：把目前 (已消耗的) 物品欄寫回目前房間的快照，重生位置不變
+            WriteSnapshot(data.currentRoomId, snapshot.spawn);
+            Save();
         }
 
         // 重新載入場景 = 所有東西回到存檔狀態
@@ -285,6 +310,8 @@ public class GameManager : MonoBehaviour
 
     public void ReturnToTitle()
     {
+        if (transitioning) return;
+        transitioning = true;
         StartCoroutine(LoadSceneRoutine(SceneNames.Title));
     }
 
@@ -296,15 +323,15 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(scene);
     }
 
-    /// <summary>世界範圍 (地圖 UI 用)。有 MapArea 時 = 所有區域的聯集，否則用 boundsTilemap。</summary>
+    /// <summary>世界範圍。有 MapArea 時 = 所有區域的聯集，否則用 boundsTilemap。</summary>
     public Bounds WorldBounds
     {
         get
         {
-            if (MapArea.All.Count > 0)
+            if (rooms.Count > 0)
             {
-                var all = MapArea.All[0].Bounds.bounds;
-                foreach (var area in MapArea.All) all.Encapsulate(area.Bounds.bounds);
+                var all = rooms[0].Bounds.bounds;
+                foreach (var area in rooms) all.Encapsulate(area.Bounds.bounds);
                 return all;
             }
             if (boundsTilemap == null) return new Bounds(Vector3.zero, Vector3.one * 50f);
