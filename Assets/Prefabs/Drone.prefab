@@ -186,8 +186,12 @@ MonoBehaviour:
     m_Bits: 256
   batteryRange: 1.2
   carryOffset: {x: 0, y: -0.8}
+  maxLift: 1
   crashTime: 1
   crashFx: {fileID: 7307691215691645390, guid: f1066495c26fd644db2918ab077d1404, type: 3}
+  warnFx: {fileID: 6058154303950363360, guid: 06b41ce08c6f7b449915459c72df1ff5, type: 3}
+  warnColor: {r: 1, g: 0.3, b: 0.25, a: 1}
+  warnFlashRate: 8
   visual: {fileID: 487483682357688714}
   openSprite: {fileID: 21300000, guid: ff74ae7db2e219e43919f0afe28c8d3d, type: 3}
   flyFrames:
