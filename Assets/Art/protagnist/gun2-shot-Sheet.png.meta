@@ -46,7 +46,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -60,7 +60,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 24
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -84,7 +84,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -122,89 +122,89 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: gun2-shot-Sheet_0
+      name: gun2-shot_0
       rect:
         serializedVersion: 2
-        x: 13
+        x: 0
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8d22cb48abfb614e0800000000000000
-      internalID: -2011209375762603304
+      spriteID: a411edb96edf9e2428ff5a21e04440d0
+      internalID: 102756176
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-shot-Sheet_1
+      name: gun2-shot_1
       rect:
         serializedVersion: 2
-        x: 62
+        x: 50
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 8b125c3d83f653d10800000000000000
-      internalID: 2104710690727338424
+      spriteID: f3d6a8347e9fc2943a63eec7fba97db0
+      internalID: 223310724
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-shot-Sheet_2
+      name: gun2-shot_2
       rect:
         serializedVersion: 2
-        x: 112
+        x: 100
         y: 0
-        width: 23
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 6aea4e04c4aa299e0800000000000000
-      internalID: -1616042071789621594
+      spriteID: 1e0780f10d0e3bc47a354d63dc373921
+      internalID: -1715525909
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: gun2-shot-Sheet_3
+      name: gun2-shot_3
       rect:
         serializedVersion: 2
-        x: 163
+        x: 150
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 11dcfa2a29e457790800000000000000
-      internalID: -7533028410005664495
+      spriteID: d6fb0ae69c428834d912ac2c59c3ed84
+      internalID: -1858810708
       vertices: []
       indices: 
       edges: []
@@ -213,7 +213,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: b0ed981bd9888464b9b609c1c4fffd86
     internalID: 0
     vertices: []
     indices: 
@@ -227,6 +227,10 @@ TextureImporter:
       gun2-shot-Sheet_1: 2104710690727338424
       gun2-shot-Sheet_2: -1616042071789621594
       gun2-shot-Sheet_3: -7533028410005664495
+      gun2-shot_0: 102756176
+      gun2-shot_1: 223310724
+      gun2-shot_2: -1715525909
+      gun2-shot_3: -1858810708
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

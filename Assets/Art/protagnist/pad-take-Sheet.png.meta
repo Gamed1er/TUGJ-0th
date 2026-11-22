@@ -52,7 +52,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -66,7 +66,7 @@ TextureImporter:
   spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 100
+  spritePixelsToUnits: 24
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -90,7 +90,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -128,133 +128,133 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: pad-take-Sheet_0
+      name: pad-take_0
       rect:
         serializedVersion: 2
-        x: 13
+        x: 0
         y: 0
-        width: 22
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b282426e7958c31d0800000000000000
-      internalID: -3369671533732288469
+      spriteID: 2465f4ac6f389fa4db8b3644314591ca
+      internalID: 1349463710
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-take-Sheet_1
+      name: pad-take_1
       rect:
         serializedVersion: 2
-        x: 61
+        x: 50
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: c1328a3f3a960be50800000000000000
-      internalID: 6823069588354769692
+      spriteID: 5c61b435c90e42f4da9a8bd6d5ad24e8
+      internalID: -607213031
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-take-Sheet_2
+      name: pad-take_2
       rect:
         serializedVersion: 2
-        x: 111
+        x: 100
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: da96bea16db400100800000000000000
-      internalID: 72140976984648109
+      spriteID: a3150bc9b49d89d42aee5e6ce5a44de2
+      internalID: -714253499
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-take-Sheet_3
+      name: pad-take_3
       rect:
         serializedVersion: 2
-        x: 162
+        x: 150
         y: 0
-        width: 27
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: a82f1f113d797d130800000000000000
-      internalID: 3591506160646222474
+      spriteID: 7412fb003695d4c419e41d913fca3b3b
+      internalID: -1194833274
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-take-Sheet_4
+      name: pad-take_4
       rect:
         serializedVersion: 2
-        x: 213
+        x: 200
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: b7c6beb8b9f16f0d0800000000000000
-      internalID: -3389486916621865861
+      spriteID: 4a4c78d48f10c5144be24169454e8260
+      internalID: -1789269188
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: pad-take-Sheet_5
+      name: pad-take_5
       rect:
         serializedVersion: 2
-        x: 263
+        x: 250
         y: 0
-        width: 24
-        height: 36
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        width: 50
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.38}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
-      tessellationDetail: -1
+      tessellationDetail: 0
       bones: []
-      spriteID: 2e2f8ebef8291c760800000000000000
-      internalID: 7476418003247624930
+      spriteID: a6e0f77f5b083684bb3c5319ef449259
+      internalID: -1235588498
       vertices: []
       indices: 
       edges: []
@@ -263,7 +263,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 1ff6e170a1de7e942b73ebe21850b9f6
     internalID: 0
     vertices: []
     indices: 
@@ -279,6 +279,12 @@ TextureImporter:
       pad-take-Sheet_3: 3591506160646222474
       pad-take-Sheet_4: -3389486916621865861
       pad-take-Sheet_5: 7476418003247624930
+      pad-take_0: 1349463710
+      pad-take_1: -607213031
+      pad-take_2: -714253499
+      pad-take_3: -1194833274
+      pad-take_4: -1789269188
+      pad-take_5: -1235588498
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
