@@ -24,6 +24,14 @@ public class UIFrameAnimation : MonoBehaviour
 
     void OnEnable() => Restart();
 
+    /// <summary>換成另一組圖從頭播 (例如標題角色選完存檔後的離場動畫)。</summary>
+    public void Play(Sprite[] newFrames, bool loop)
+    {
+        frames = newFrames;
+        this.loop = loop;
+        Restart();
+    }
+
     public void Restart()
     {
         time = 0f;

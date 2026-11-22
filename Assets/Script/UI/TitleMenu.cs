@@ -8,10 +8,20 @@ using UnityEngine.SceneManagement;
 /// 點擊任意位置 (或 Enter / Space) → 彈出終端機風格的存檔視窗 (TerminalMenu)：
 ///   new save (已有存檔要按兩次，清掉 save1、save2 從一周目開始) / save1 / save2 (存在才能選)。
 /// 視窗右上角 × 或 Esc 關閉，回到動畫。
+/// 角色 (另一個 UIFrameAnimation，疊在背景上) 平常循環 main_character 1~16；
+/// 選好存檔後關掉視窗、換播 departFrames (main_character2 1~9) 一次 + departSfx，播完才淡出進遊戲。
 /// </summary>
 public class TitleMenu : MonoBehaviour
 {
     [SerializeField] ScreenFader fader;
+
+    [Header("角色")]
+    [Tooltip("疊在背景上的角色動畫 (平常的循環圖設在它自己的 frames)")]
+    [SerializeField] UIFrameAnimation character;
+    [Tooltip("選好存檔後播一次的離場動畫")]
+    [SerializeField] Sprite[] departFrames;
+    [Tooltip("離場動畫開始時播的音效")]
+    [SerializeField] AudioClip departSfx;
 
     [Header("存檔視窗")]
     [SerializeField] GameObject popup;
@@ -121,6 +131,13 @@ public class TitleMenu : MonoBehaviour
 
     IEnumerator LoadGame()
     {
+        popup.SetActive(false);
+        if (character != null && departFrames != null && departFrames.Length > 0)
+        {
+            character.Play(departFrames, loop: false);
+            Sfx.Play(departSfx);
+            yield return new WaitUntil(() => character.Finished);
+        }
         if (fader != null) yield return fader.FadeOut();
         SceneManager.LoadScene(SceneNames.Game);
     }
