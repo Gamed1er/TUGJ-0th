@@ -13,7 +13,7 @@ public class PlayerRocket : MonoBehaviour
 
     [Tooltip("飛行時的噴射粒子 (玩家腳下、往下噴)")]
     [SerializeField] ParticleSystem thrustFx;
-    [Tooltip("尾氣判定範圍 (玩家腳底往下的長方形，寬 x 高)。飛行中碰到的電池會爆炸")]
+    [Tooltip("尾氣判定範圍 (玩家腳底往下的長方形，寬 x 高)。飛行中碰到的電池會被點燃 (Battery.fuseTime 秒後爆炸)")]
     [SerializeField] Vector2 exhaustSize = new Vector2(1f, 2f);
 
     readonly Collider2D[] exhaustHits = new Collider2D[8];
@@ -39,7 +39,7 @@ public class PlayerRocket : MonoBehaviour
     {
         if (State != RocketState.Flying) return;
 
-        // 尾氣：腳底往下的長方形範圍內的電池爆炸
+        // 尾氣：腳底往下的長方形範圍內的電池被點燃 (倒數後爆炸)
         Bounds b = body.bounds;
         var center = new Vector2(b.center.x, b.min.y - exhaustSize.y * 0.5f);
         var filter = new ContactFilter2D { useTriggers = false };
@@ -47,7 +47,7 @@ public class PlayerRocket : MonoBehaviour
         for (int i = 0; i < n; i++)
         {
             var battery = exhaustHits[i].GetComponentInParent<Battery>();
-            if (battery != null && !battery.rocketProof) battery.Explode();
+            if (battery != null && !battery.rocketProof) battery.StartFuse(); // 點燃引信，倒數後爆炸
         }
     }
 

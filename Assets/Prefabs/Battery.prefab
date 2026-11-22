@@ -183,3 +183,13 @@ MonoBehaviour:
   maxKnockback: 80
   chainDelay: 0.1
   explosionFx: {fileID: 3027769988156050650, guid: a63304b7d9086d1469d5caa1eb2719c9, type: 3}
+  rocketProof: 0
+  fuseTime: 1.5
+  fuseColor: {r: 1, g: 0.2, b: 0.15, a: 1}
+  fuseFlashRate: {x: 3, y: 12}
+  fuseTextOffset: {x: 0, y: 0.9}
+  fuseFx: {fileID: 6058154303950363360, guid: e660691c853b41d4d9850118a61a425d, type: 3}
+  blockMask:
+    serializedVersion: 2
+    m_Bits: 256
+  maxSlopeAngle: 50

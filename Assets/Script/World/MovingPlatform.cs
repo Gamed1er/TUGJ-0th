@@ -7,7 +7,8 @@ using UnityEngine;
 ///
 /// 每個物理步：
 /// - 站在平台上的東西 (玩家、電池、沒電的無人機) 跟著移動；被牆擋住就留在原地 (平台從腳下滑走)
-/// - 擋在移動方向前面的東西 (玩家、電池、無人機) 被推著走；推不動 → 玩家死亡、電池爆炸、無人機摧毀
+/// - 擋在移動方向前面的東西 (玩家、電池、無人機) 被推著走，它前面的東西 (例如疊在上面的電池) 也一起推 (CollectChain)；
+///   整串推不動 (撞牆) → 整串都被擠壓：玩家死亡、電池爆炸、無人機摧毀
 /// 黑洞不受影響 (它沒有碰撞體)。
 /// </summary>
 public class MovingPlatform : Activatable
@@ -28,6 +29,9 @@ public class MovingPlatform : Activatable
     readonly Collider2D[] overlap = new Collider2D[16];
     readonly HashSet<Rigidbody2D> front = new HashSet<Rigidbody2D>();
     readonly HashSet<Rigidbody2D> riders = new HashSet<Rigidbody2D>();
+    readonly HashSet<Rigidbody2D> moved = new HashSet<Rigidbody2D>();  // 這一步已經處理過的
+    readonly List<Rigidbody2D> chain = new List<Rigidbody2D>();
+    readonly RaycastHit2D[] chainHits = new RaycastHit2D[8];
 
     void Awake()
     {
@@ -47,8 +51,9 @@ public class MovingPlatform : Activatable
 
         CollectMovers(delta);
 
+        moved.Clear();
         foreach (var rb in front) Push(rb, delta, crushIfBlocked: true);
-        foreach (var rb in riders) if (!front.Contains(rb)) Push(rb, delta, crushIfBlocked: false);
+        foreach (var rb in riders) Push(rb, delta, crushIfBlocked: false);
 
         body.position = next;
         body.transform.position = next;
@@ -86,16 +91,49 @@ public class MovingPlatform : Activatable
         return false;
     }
 
+    /// <summary>推 rb 以及它前面一整串的東西。整串有任何一個撞牆 → 都不動 (crushIfBlocked = 整串被擠壓)。</summary>
     void Push(Rigidbody2D rb, Vector2 delta, bool crushIfBlocked)
     {
-        if (rb == null) return;
-        if (IsBlocked(rb, delta))
+        if (rb == null || moved.Contains(rb)) return;
+        bool blocked = CollectChain(rb, delta);
+        foreach (var c in chain) moved.Add(c);
+        if (blocked)
         {
-            if (crushIfBlocked) Crush(rb);
+            if (crushIfBlocked) foreach (var c in chain) Crush(c);
             return;
         }
-        rb.position += delta;
-        rb.transform.position = rb.position;
+        foreach (var c in chain)
+        {
+            c.position += delta;
+            c.transform.position = c.position;
+        }
+    }
+
+    /// <summary>從 first 開始，往 delta 方向收集會被一起推的東西 (放進 chain)。回傳這串會不會撞到牆。</summary>
+    bool CollectChain(Rigidbody2D first, Vector2 delta)
+    {
+        chain.Clear();
+        chain.Add(first);
+        Vector2 dir = delta.normalized;
+        var filter = new ContactFilter2D { useTriggers = false };
+        bool blocked = false;
+        for (int i = 0; i < chain.Count && chain.Count < 16; i++)
+        {
+            var rb = chain[i];
+            if (IsBlocked(rb, delta)) blocked = true;
+
+            var self = rb.GetComponentInChildren<Collider2D>();
+            int n = rb.Cast(dir, filter, chainHits, delta.magnitude + 0.02f);
+            for (int k = 0; k < n; k++)
+            {
+                var h = chainHits[k];
+                if (h.collider == bodyCol || h.rigidbody == null || chain.Contains(h.rigidbody)) continue;
+                if (Vector2.Dot(h.normal, dir) > -0.05f) continue;                       // 貼著滑過的不算
+                if (self != null && Physics2D.GetIgnoreCollision(self, h.collider)) continue; // 例如無人機跟電池
+                if (IsMovable(h.collider, rider: false)) chain.Add(h.rigidbody);
+            }
+        }
+        return blocked;
     }
 
     /// <summary>這個物體往 delta 方向移動會不會撞到牆 (地形、門、其他平台)。</summary>

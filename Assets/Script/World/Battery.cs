@@ -8,7 +8,8 @@ using UnityEngine;
 /// 可以被無人機吊起來 (SetCarried)：吊著時是 Kinematic、跟著無人機、不受黑洞影響。玩家可以站在吊著的電池上 (站久了無人機會墜機，見 Drone)。
 /// 跟無人機永遠不碰撞 (Drone 生成時會設定，這裡處理電池比無人機晚生成的情況)。
 ///
-/// 爆炸 (Explode)：被火箭尾氣噴到 (PlayerRocket，rocketProof 的不會)、被平台擠壓 (MovingPlatform) 時觸發。
+/// 爆炸 (Explode)：被平台擠壓 (MovingPlatform)、連鎖、請輸入文本生成時重疊 → 立刻爆炸。
+/// 被火箭尾氣噴到 (PlayerRocket，rocketProof 的不會) → 先點燃引信 (StartFuse)：閃紅 + 頭上顯示倒數 + 火花，fuseTime 秒後爆炸。
 /// 範圍內的玩家、沒電的無人機被往外推；範圍內的其他電池延遲 chainDelay 秒後連鎖爆炸。
 /// 範圍內的可破壞方塊 (Breakable) 被破壞 (隔牆也會)。不會炸死玩家。
 /// </summary>
@@ -29,6 +30,18 @@ public class Battery : MonoBehaviour
     [Tooltip("勾選 = 火箭尾氣不會引爆 (固有電池)")]
     public bool rocketProof;
 
+    [Header("引信 (火箭尾氣點燃)")]
+    [Tooltip("點燃到爆炸的時間 (秒)")]
+    public float fuseTime = 1.5f;
+    [Tooltip("倒數時閃爍的顏色")]
+    public Color fuseColor = new Color(1f, 0.2f, 0.15f, 1f);
+    [Tooltip("閃爍頻率 (次/秒)：剛點燃 → 快爆炸")]
+    public Vector2 fuseFlashRate = new Vector2(3f, 12f);
+    [Tooltip("倒數數字在電池上方的位置")]
+    public Vector2 fuseTextOffset = new Vector2(0f, 0.9f);
+    [Tooltip("倒數中的循環特效 (火花，生成在電池上當子物件，爆炸時一起消失)")]
+    public GameObject fuseFx;
+
     [Header("推動")]
     [Tooltip("會擋住推動的圖層 (Ground)")]
     public LayerMask blockMask = 1 << 8;
@@ -36,6 +49,11 @@ public class Battery : MonoBehaviour
     [Range(0f, 89f)] public float maxSlopeAngle = 50f;
 
     bool exploded, explodeScheduled;
+    float fuseLeft = -1f;    // < 0 = 沒有點燃
+    float flashPhase;
+    SpriteRenderer sr;
+    Color baseColor;
+    TextMesh fuseText;
     readonly Collider2D[] overlap = new Collider2D[32];
 
     Rigidbody2D rb;
@@ -47,6 +65,7 @@ public class Battery : MonoBehaviour
     readonly RaycastHit2D[] castHits = new RaycastHit2D[8];
 
     public bool IsCarried { get; private set; }
+    public bool IsFusing => fuseLeft >= 0f;
     /// <summary>玩家用電池倉生成的 (一周目通關時只記錄這種，關卡原本擺的不算)。</summary>
     public bool SpawnedByPlayer { get; set; }
     public Rigidbody2D Body => rb;
@@ -57,6 +76,8 @@ public class Battery : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
         baseGravity = rb.gravityScale;
+        sr = GetComponent<SpriteRenderer>();
+        if (sr != null) baseColor = sr.color;
     }
 
     void OnEnable()
@@ -107,6 +128,48 @@ public class Battery : MonoBehaviour
         Breakable.BreakAround(center, explosionRadius);
 
         Destroy(gameObject);
+    }
+
+    /// <summary>點燃引信：fuseTime 秒後爆炸。已經點燃 / 已經爆炸就不做事 (火箭尾氣每一步都會呼叫)。</summary>
+    public void StartFuse()
+    {
+        if (exploded || IsFusing) return;
+        fuseLeft = fuseTime;
+        flashPhase = 0f;
+        if (fuseFx != null) Instantiate(fuseFx, transform.position, Quaternion.identity, transform);
+
+        // 倒數數字：世界座標的 TextMesh (只有數字，內建字型就夠)
+        var go = new GameObject("FuseText");
+        go.transform.SetParent(transform, false);
+        go.transform.localPosition = fuseTextOffset;
+        fuseText = go.AddComponent<TextMesh>();
+        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        fuseText.font = font;
+        fuseText.fontSize = 64;
+        fuseText.characterSize = 0.06f;
+        fuseText.anchor = TextAnchor.MiddleCenter;
+        fuseText.alignment = TextAlignment.Center;
+        fuseText.color = fuseColor;
+        var mr = go.GetComponent<MeshRenderer>();
+        mr.sharedMaterial = font.material;
+        mr.sortingOrder = (sr != null ? sr.sortingOrder : 0) + 10;
+        UpdateFuseVisual();
+    }
+
+    void Update()
+    {
+        if (!IsFusing || exploded) return;
+        fuseLeft -= Time.deltaTime;
+        if (fuseLeft <= 0f) { Explode(); return; }
+        UpdateFuseVisual();
+    }
+
+    void UpdateFuseVisual()
+    {
+        float t = fuseTime > 0f ? 1f - fuseLeft / fuseTime : 1f;
+        flashPhase += Time.deltaTime * Mathf.Lerp(fuseFlashRate.x, fuseFlashRate.y, t);
+        if (sr != null) sr.color = Mathf.Repeat(flashPhase, 1f) < 0.5f ? fuseColor : baseColor;
+        if (fuseText != null) fuseText.text = Mathf.Max(fuseLeft, 0.1f).ToString("0.0");
     }
 
     /// <summary>delay 秒後爆炸 (連鎖用)。重複呼叫只算一次。</summary>

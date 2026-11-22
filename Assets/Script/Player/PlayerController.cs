@@ -6,6 +6,7 @@ using UnityEngine;
 /// 飛行 (火箭)：SetFlying 開啟後沒有重力，垂直速度固定。
 /// 黑洞引力：每個物理步向 BlackHole.SamplePull 取得拉力，當作「額外速度」疊加上去。
 /// 推電池：在地上往電池走 → 呼叫 Battery.Push (電池沿地面 / 斜坡移動，跟玩家同水平速度)。
+/// 站在電池上：電池被移動 (黑洞、平台、物理...) 時，玩家跟著水平移動 (GroundCarry)。被無人機吊著的電池由 Drone 自己帶。
 /// 擊退 (電池爆炸)：AddKnockback 加一個外力速度，同樣疊加上去，在 knockbackTime 秒內衰減到 0。
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
@@ -55,6 +56,9 @@ public class PlayerController : MonoBehaviour
     ContactFilter2D groundFilter;
     readonly RaycastHit2D[] hits = new RaycastHit2D[4];
     Vector2 groundNormal = Vector2.up;
+    Rigidbody2D groundBody;      // 腳下的東西 (這一步)
+    Battery carrier;             // 上一步站著的電池
+    Vector2 carrierLastPos;
 
     float lastGroundedTime = -99f;
     float lastJumpPressedTime = -99f;
@@ -96,6 +100,7 @@ public class PlayerController : MonoBehaviour
         if (IsFlying)
         {
             IsGrounded = false;
+            carrier = null;
             rb.gravityScale = 0f;
             rb.linearVelocity = new Vector2(x * moveSpeed + pull.x, flyRiseSpeed + pull.y);
             lastPullY = pull.y;
@@ -121,7 +126,7 @@ public class PlayerController : MonoBehaviour
         {
             rb.gravityScale = 0f;
             Vector2 along = new Vector2(groundNormal.y, -groundNormal.x); // 沿地面往右的方向
-            v = along * (x * moveSpeed) + new Vector2(pull.x, 0f); // 地上只吃水平拉力；往上夠大會在 CheckGround 離地
+            v = along * (x * moveSpeed) + new Vector2(pull.x + GroundCarry(), 0f); // 地上只吃水平拉力；往上夠大會在 CheckGround 離地
             lastPullY = 0f;
             if (Mathf.Abs(x) > 0.01f) PushBattery(x > 0 ? 1 : -1, Mathf.Abs(along.x * x * moveSpeed));
         }
@@ -146,6 +151,19 @@ public class PlayerController : MonoBehaviour
         rb.linearVelocity = v;
     }
 
+    /// <summary>站在電池上：回傳電池上一步的水平位移換算的速度，讓玩家跟著移動。</summary>
+    float GroundCarry()
+    {
+        Battery battery = groundBody != null ? groundBody.GetComponentInParent<Battery>() : null;
+        if (battery != null && battery.IsCarried) battery = null; // 吊著的由 Drone.CarryRider 處理
+        float vx = 0f;
+        if (battery != null && battery == carrier)
+            vx = (battery.Body.position.x - carrierLastPos.x) / Time.fixedDeltaTime;
+        carrier = battery;
+        if (battery != null) carrierLastPos = battery.Body.position;
+        return vx;
+    }
+
     /// <summary>前方貼著電池 → 推它。</summary>
     void PushBattery(int dir, float speed)
     {
@@ -162,6 +180,7 @@ public class PlayerController : MonoBehaviour
     void CheckGround(bool wasGrounded, Vector2 pull)
     {
         IsGrounded = false;
+        groundBody = null;
 
         // 跳躍上升中不算著地
         if (jumping && rb.linearVelocity.y > 0.01f) return;
@@ -178,6 +197,7 @@ public class PlayerController : MonoBehaviour
             if (hits[i].normal.y < minNormalY) continue; // 牆壁或太陡
             IsGrounded = true;
             groundNormal = hits[i].normal;
+            groundBody = hits[i].rigidbody;
             if (hits[i].distance > 0.02f) rb.position += Vector2.down * (hits[i].distance - 0.01f);
             break;
         }
@@ -187,7 +207,11 @@ public class PlayerController : MonoBehaviour
             lastGroundedTime = Time.time;
             jumping = false;
         }
-        else groundNormal = Vector2.up;
+        else
+        {
+            groundNormal = Vector2.up;
+            carrier = null;
+        }
     }
 
     void StartJump(bool allowCut)
@@ -239,6 +263,7 @@ public class PlayerController : MonoBehaviour
         transform.position = position;
         rb.linearVelocity = Vector2.zero;
         lastPullY = 0f;
+        carrier = null;
     }
 
     /// <summary>凍結/解凍玩家 (死亡、轉場時)。</summary>
