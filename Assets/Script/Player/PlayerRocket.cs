@@ -13,6 +13,8 @@ public class PlayerRocket : MonoBehaviour
 
     [Tooltip("飛行時的噴射粒子 (玩家腳下、往下噴)")]
     [SerializeField] ParticleSystem thrustFx;
+    [Tooltip("飛行中循環的噴射音效 (Player 上的 LoopSfx 元件)")]
+    [SerializeField] LoopSfx thrustSfx;
     [Tooltip("尾氣判定範圍 (玩家腳底往下的長方形，寬 x 高)。飛行中碰到的電池會被點燃 (Battery.fuseTime 秒後爆炸)")]
     [SerializeField] Vector2 exhaustSize = new Vector2(1f, 2f);
 
@@ -74,6 +76,7 @@ public class PlayerRocket : MonoBehaviour
     {
         if (State == RocketState.Flying) player.SetFlying(false);
         if (thrustFx != null) thrustFx.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        if (thrustSfx != null) thrustSfx.Stop();
         State = RocketState.Idle;
         Fill = 0f;
     }
@@ -92,6 +95,7 @@ public class PlayerRocket : MonoBehaviour
                     timer = config.flightDuration;
                     player.SetFlying(true, config.riseSpeed);
                     if (thrustFx != null) thrustFx.Play();
+                    if (thrustSfx != null) thrustSfx.Play();
                 }
                 break;
 

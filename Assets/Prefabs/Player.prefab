@@ -5087,6 +5087,7 @@ GameObject:
   - component: {fileID: 175543665719181974}
   - component: {fileID: 2558607758559941649}
   - component: {fileID: 2294608217568371311}
+  - component: {fileID: 6130768916871932298}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -5312,6 +5313,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerRocket
   thrustFx: {fileID: 7529178966309796029}
+  thrustSfx: {fileID: 6130768916871932298}
   exhaustSize: {x: 1, y: 2}
 --- !u!114 &175543665719181974
 MonoBehaviour:
@@ -5428,6 +5430,22 @@ MonoBehaviour:
   preview: {fileID: 6428334019375430294}
   validColor: {r: 1, g: 1, b: 1, a: 0.45}
   invalidColor: {r: 1, g: 0.2, b: 0.2, a: 0.45}
+--- !u!114 &6130768916871932298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4787170877459103408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e27aaad86a5794b40ab33eae4baf5dde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LoopSfx
+  clip: {fileID: 8300000, guid: 13258cc393e06a24d87ccffebf309f68, type: 3}
+  volume: 0.5
+  fullVolumeDistance: 0
+  silentDistance: 0
 --- !u!1 &8481878777682857398
 GameObject:
   m_ObjectHideFlags: 0

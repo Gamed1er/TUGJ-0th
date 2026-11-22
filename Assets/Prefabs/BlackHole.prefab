@@ -5028,6 +5028,7 @@ GameObject:
   m_Component:
   - component: {fileID: 935027941868688299}
   - component: {fileID: 2219452617054987570}
+  - component: {fileID: 2914109012382107604}
   m_Layer: 2
   m_Name: BlackHole
   m_TagString: Untagged
@@ -5073,8 +5074,27 @@ MonoBehaviour:
     m_Bits: 256
   breakRadius: 2
   pullRadius: 4
-  maxPullSpeed: 3.5
+  playerPull: 3.5
+  objectPull: 3.5
+  bulletPull: 63
   damping: 15
   rangeIndicator: {fileID: 7532826742363311707}
   pullFx: {fileID: 5254604556798439503}
   pullFxSpeed: 2.5
+  pullSfx: {fileID: 2914109012382107604}
+--- !u!114 &2914109012382107604
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8731822308899014099}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e27aaad86a5794b40ab33eae4baf5dde, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LoopSfx
+  clip: {fileID: 8300000, guid: faebc3d6180a79c41b9d436a23da76b5, type: 3}
+  volume: 0.6
+  fullVolumeDistance: 4
+  silentDistance: 12

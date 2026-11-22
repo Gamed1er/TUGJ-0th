@@ -52,6 +52,8 @@ public class GameManager : MonoBehaviour
     [TextArea(3, 15)] public string introLoop2;
     [Tooltip("淡入完成後等幾秒才開始對話")]
     public float introDelay = 0.6f;
+    [Tooltip("二周目通關後的結局劇情 (播完才播 end 動畫)。一行 = 一句；單獨一行 cg_3 = 換成 CG3 的圖 (圖拖在 EndingUI.cgSprites)；cg 底下沒有句子 = 只看圖按一下繼續；【end】= 結束")]
+    [TextArea(5, 30)] public string endingStory;
 
     [Header("音效")]
     public AudioClip dieSfx;
@@ -297,7 +299,16 @@ public class GameManager : MonoBehaviour
         else
         {
             if (fader != null) yield return fader.FadeOut();
-            Time.timeScale = 0f; // 動畫期間遊戲停住
+            Time.timeScale = 0f; // 劇情 / 動畫期間遊戲停住
+
+            if (!string.IsNullOrWhiteSpace(endingStory))
+            {
+                var story = StartCoroutine(ending.PlayStory(endingStory)); // 先換成 CG，再從黑畫面淡入
+                if (fader != null) StartCoroutine(fader.FadeIn());
+                yield return story;
+                if (fader != null) yield return fader.FadeOut();
+            }
+
             var play = StartCoroutine(ending.Play()); // 立刻顯示 end 畫面，再從黑畫面淡入
             if (fader != null) StartCoroutine(fader.FadeIn());
             yield return play;
