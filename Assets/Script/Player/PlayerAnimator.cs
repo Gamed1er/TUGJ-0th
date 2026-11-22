@@ -7,9 +7,9 @@ using UnityEngine;
 ///   速度 ≥ +jumpSpeedRange = 第一格 (剛起跳)，≤ -jumpSpeedRange = 最後一格 (下落)，中間線性對應 (接近最高點 = 中間的格)
 /// 拿槍 (傳送槍 / 黑洞槍)：選中那一格 → 播拿槍動畫 (draw) 一次，之後停在最後一格；射擊成功 (PlayShot) → 播射擊動畫一次。
 ///   站著 / 射擊時角色面向滑鼠。拿槍走路 → 循環播 teleportWalk / blackHoleWalk (面向移動方向)，不播拿槍動畫；
-///   停下來時直接停在拿槍動畫的最後一格。空中照舊用 jumpFrames。
+///   停下來時直接停在拿槍動畫的最後一格。拿槍時空中也循環播拿槍走路的圖 (沒拿槍才用 jumpFrames)。
 /// 操控無人機 (Drone.Controlled)：播 padTake 一次 → 循環 padUsing。
-/// 優先順序：空中 > 無人機平板 > 射擊 > 拿槍走路 > 走路 > 拿槍 > 站立。
+/// 優先順序：空中 (沒拿槍) > 無人機平板 > 射擊 > 拿槍走路 / 拿槍空中 > 走路 > 拿槍 > 站立。
 /// 特效：落地 (landFx)、走路落腳 (walkFx，walkFxFrames 指定哪幾格)。
 /// 左右翻轉平常由 PlayerController 處理 (sprite.flipX)，拿槍站著時這裡改成面向滑鼠。
 /// </summary>
@@ -126,7 +126,9 @@ public class PlayerAnimator : MonoBehaviour
         if (player.IsGrounded && airTime > landFxMinAirTime && landFx != null)
             Instantiate(landFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
         airTime = player.IsGrounded ? 0f : airTime + Time.deltaTime;
-        if (airTime > airDelay && jumpFrames != null && jumpFrames.Length > 0)
+        // 拿槍時空中也用拿槍走路的圖 (不然槍會消失)，交給下面的走路處理
+        bool gunAir = airTime > airDelay && hasGun && gunWalk != null && gunWalk.Length > 0;
+        if (airTime > airDelay && !gunAir && jumpFrames != null && jumpFrames.Length > 0)
         {
             timer = 0f;
             float vy = player.Body.linearVelocity.y;
@@ -157,7 +159,7 @@ public class PlayerAnimator : MonoBehaviour
             return;
         }
 
-        bool walking = player.IsGrounded && Mathf.Abs(player.MoveInput) > 0.01f && walkFrames != null && walkFrames.Length > 0;
+        bool walking = (gunAir || player.IsGrounded && Mathf.Abs(player.MoveInput) > 0.01f) && walkFrames != null && walkFrames.Length > 0;
         if (!walking)
         {
             timer = 0f;
@@ -184,7 +186,7 @@ public class PlayerAnimator : MonoBehaviour
         if (walkFrame != lastWalkFrame)
         {
             lastWalkFrame = walkFrame;
-            if (walkFx != null && System.Array.IndexOf(walkFxFrames, walkFrame) >= 0)
+            if (walkFx != null && player.IsGrounded && System.Array.IndexOf(walkFxFrames, walkFrame) >= 0)
                 Instantiate(walkFx, new Vector3(body.bounds.center.x, body.bounds.min.y), Quaternion.identity);
         }
     }

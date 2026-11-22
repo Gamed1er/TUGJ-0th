@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,7 +14,7 @@ using UnityEngine.UI;
 ///   用過 = File Not Exist (紅)、一周目沒有電池紀錄 = empty (灰)
 /// 設定頁：music / sfx 音量 (A/D 或點左半 / 右半調整)、exit (按兩次回標題)、back。
 ///
-/// 每一行都是程式產生的 Text (TerminalRow)，排版交給 leftColumn / rightColumn 上的 VerticalLayoutGroup。
+/// 行的建立、選取、鍵盤操作在 TerminalMenu (標題畫面共用)，排版交給 leftColumn / rightColumn 上的 VerticalLayoutGroup。
 /// 美術調整：panel 的背景圖 (SavePage)、字型 / 字級 / 顏色都在 Inspector。
 /// </summary>
 public class TerminalUI : MonoBehaviour
@@ -45,22 +44,7 @@ public class TerminalUI : MonoBehaviour
 
     const string DefaultHint = "WASD / mouse: select   Enter / click: run   Esc: close";
 
-    /// <summary>一行。selectable = 可以選取 / 執行。</summary>
-    class Entry
-    {
-        public TerminalRow row;
-        public string label;
-        public Color color;
-        public bool bold;
-        public bool selectable;
-        public int column;       // 0 = 左、1 = 右
-        public int line;         // 在該欄的第幾行
-        public Action submit;    // Enter / 點擊
-        public Action<int> adjust; // 左右調整 (音量)
-    }
-
-    readonly List<Entry> entries = new List<Entry>();
-    Entry selected;
+    TerminalMenu menu;
     bool settingsPage;
     MapArea pendingLoad;  // 讀檔確認中的房間
     bool pendingExit;     // exit 確認中
@@ -70,7 +54,7 @@ public class TerminalUI : MonoBehaviour
     void Start()
     {
         panel.SetActive(false);
-        if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        menu = new TerminalMenu(font, fontSize, rowHeight, leftColumn, rightColumn);
         GameManager.Instance.StateChanged += OnStateChanged;
     }
 
@@ -96,10 +80,7 @@ public class TerminalUI : MonoBehaviour
             else SetOpen(false);
             return;
         }
-        Vector2Int move = GameInput.MenuMove;
-        if (move.y != 0) MoveVertical(-move.y);
-        else if (move.x != 0) MoveHorizontal(move.x);
-        if (GameInput.SubmitPressed && selected != null) selected.submit?.Invoke();
+        menu.HandleInput();
     }
 
     // ---------- 開關 ----------
@@ -127,7 +108,7 @@ public class TerminalUI : MonoBehaviour
         settingsPage = settings;
         pendingLoad = null;
         pendingExit = false;
-        selected = null;
+        menu.ForgetSelection(); // 換頁不選回上一頁的位置
         SetHint(DefaultHint);
         Rebuild();
     }
@@ -136,26 +117,14 @@ public class TerminalUI : MonoBehaviour
 
     void Rebuild()
     {
-        // 重建後盡量選回同一行
-        int keepColumn = selected != null ? selected.column : 0;
-        int keepLine = selected != null ? selected.line : -1;
-
-        foreach (var e in entries) Destroy(e.row.gameObject);
-        entries.Clear();
-        selected = null;
-
-        if (settingsPage) BuildSettings();
-        else BuildMain();
-
+        menu.Clear(); // 重建後會選回同一行
+        var fallback = settingsPage ? BuildSettings() : BuildMain();
         rightColumn.gameObject.SetActive(!settingsPage && GameManager.Instance.Loop >= 2);
-
-        selected = entries.Find(e => e.selectable && e.column == keepColumn && e.line == keepLine)
-                ?? entries.Find(e => e.selectable && e.column == 0 && e.line > 0)
-                ?? entries.Find(e => e.selectable);
-        RefreshRows();
+        menu.EndBuild(fallback);
     }
 
-    void BuildMain()
+    /// <summary>回傳預設選取的行 (第一個房間)。</summary>
+    TerminalMenu.Entry BuildMain()
     {
         var gm = GameManager.Instance;
         bool second = gm.Loop >= 2;
@@ -163,19 +132,22 @@ public class TerminalUI : MonoBehaviour
         // 左半：目前周目的存檔
         Add(0, "[settings]", normalColor, () => ShowPage(true));
         Add(0, second ? "== save2 ==" : "== save1 ==", normalColor, bold: true);
+        TerminalMenu.Entry first = null;
         for (int i = 0; i < gm.Rooms.Count; i++)
         {
             var room = gm.Rooms[i];
             string name = $"room{i + 1}";
+            TerminalMenu.Entry e;
             if (room.Id == gm.CurrentRoomId)
-                Add(0, name + "  <- now", currentColor, () => Load(room), bold: true);
+                e = Add(0, name + "  <- now", currentColor, () => Load(room), bold: true);
             else if (gm.CanRewindTo(room))
-                Add(0, name, normalColor, () => Load(room));
+                e = Add(0, name, normalColor, () => Load(room));
             else
-                Add(0, name + (gm.IsDiscovered(room) ? "  (overwritten)" : "  ----"), dimColor);
+                e = Add(0, name + (gm.IsDiscovered(room) ? "  (overwritten)" : "  ----"), dimColor);
+            if (first == null && e.selectable) first = e;
         }
 
-        if (!second) return;
+        if (!second) return first;
 
         // 右半：save1 (transform)
         Add(1, "", normalColor);
@@ -190,104 +162,24 @@ public class TerminalUI : MonoBehaviour
             else if (room == here) Add(1, name + "transform Item", normalColor, () => RecallRoom(room), bold: true);
             else Add(1, name + "exist", grayColor);
         }
+        return first;
     }
 
-    void BuildSettings()
+    TerminalMenu.Entry BuildSettings()
     {
         Add(0, "== settings ==", normalColor, bold: true);
         Add(0, VolumeLabel("music", GameAudio.MusicLevel), normalColor, null, d => { GameAudio.MusicLevel += d; Rebuild(); });
         Add(0, VolumeLabel("sfx  ", GameAudio.SfxLevel), normalColor, null, d => { GameAudio.SfxLevel += d; Rebuild(); });
         Add(0, pendingExit ? "exit  (press again to return to title)" : "exit", pendingExit ? redColor : normalColor, Exit);
         Add(0, "back", normalColor, () => ShowPage(false));
+        return null;
     }
 
     static string VolumeLabel(string name, int level) =>
         $"{name}  < [{new string('#', level)}{new string('-', GameAudio.Steps - level)}] >";
 
-    void Add(int column, string label, Color color, Action submit = null, Action<int> adjust = null, bool bold = false)
-    {
-        var parent = column == 0 ? leftColumn : rightColumn;
-        var go = new GameObject("Row", typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var text = go.AddComponent<Text>();
-        text.font = font;
-        text.fontSize = fontSize;
-        text.alignment = TextAnchor.MiddleLeft;
-        text.horizontalOverflow = HorizontalWrapMode.Overflow;
-        text.verticalOverflow = VerticalWrapMode.Overflow;
-        go.AddComponent<LayoutElement>().preferredHeight = rowHeight;
-        var row = go.AddComponent<TerminalRow>();
-
-        var e = new Entry
-        {
-            row = row,
-            label = label,
-            color = color,
-            bold = bold,
-            selectable = submit != null || adjust != null,
-            column = column,
-            line = entries.FindAll(x => x.column == column).Count,
-            submit = submit,
-            adjust = adjust,
-        };
-        if (adjust != null && submit == null) e.submit = () => adjust(1);
-        text.raycastTarget = e.selectable;
-        if (e.selectable)
-        {
-            row.Hovered = () => Select(e);
-            row.Clicked = side =>
-            {
-                Select(e);
-                if (e.adjust != null) e.adjust(side);
-                else e.submit?.Invoke();
-            };
-        }
-        entries.Add(e);
-    }
-
-    void RefreshRows()
-    {
-        foreach (var e in entries)
-        {
-            var t = e.row.Text;
-            t.text = (e == selected ? "> " : "  ") + e.label;
-            t.color = e.color;
-            t.fontStyle = e.bold ? FontStyle.Bold : FontStyle.Normal;
-        }
-    }
-
-    // ---------- 選取 ----------
-
-    void Select(Entry e)
-    {
-        if (e == selected || !e.selectable) return;
-        selected = e;
-        RefreshRows();
-    }
-
-    void MoveVertical(int step)
-    {
-        if (selected == null) { selected = entries.Find(e => e.selectable); RefreshRows(); return; }
-        var list = entries.FindAll(e => e.selectable && e.column == selected.column);
-        int i = list.IndexOf(selected);
-        if (i + step >= 0 && i + step < list.Count) Select(list[i + step]);
-    }
-
-    void MoveHorizontal(int dir)
-    {
-        if (selected == null) return;
-        if (selected.adjust != null) { selected.adjust(dir); return; } // 設定頁：調音量
-        int column = selected.column + dir;
-        Entry best = null;
-        int bestD = int.MaxValue;
-        foreach (var e in entries)
-        {
-            if (!e.selectable || e.column != column) continue;
-            int d = Mathf.Abs(e.line - selected.line);
-            if (d < bestD) { bestD = d; best = e; }
-        }
-        if (best != null) Select(best);
-    }
+    TerminalMenu.Entry Add(int column, string label, Color color, Action submit = null, Action<int> adjust = null, bool bold = false) =>
+        menu.Add(column, label, color, submit, adjust, bold);
 
     // ---------- 動作 ----------
 
