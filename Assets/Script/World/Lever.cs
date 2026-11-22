@@ -11,6 +11,7 @@ public class Lever : MonoBehaviour, IInteractable
 {
     [FormerlySerializedAs("doors")]
     [SerializeField] Activatable[] targets;
+    [SerializeField] AudioClip pullSfx;
 
     [Header("外觀 (美術可替換)")]
     [Tooltip("拉桿的把手，拉下時左右翻轉")]
@@ -30,6 +31,7 @@ public class Lever : MonoBehaviour, IInteractable
     public void Pull()
     {
         on = !on;
+        Sfx.Play(pullSfx);
         foreach (var t in targets) if (t != null) t.Toggle();
         RefreshVisual();
     }

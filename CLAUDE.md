@@ -24,13 +24,14 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
   - **電池爆炸**：`Battery.Explode` (平台擠壓、連鎖、transform 生成時重疊 → 立刻爆炸)。火箭尾氣 (`PlayerRocket.exhaustSize` 範圍) 只會點燃引信 `Battery.StartFuse`：閃紅 (`fuseColor`、`fuseFlashRate`) + 頭上 TextMesh 倒數 + 火花 `fuseFx`，`fuseTime` (1.5) 秒後爆炸。範圍內的電池先被擊退 (吊著的不會)、延遲 `chainDelay` 連鎖爆炸。擊退在 `Knockback.Apply`：上下疊在一起的 (A 站在 B 頂面) 分成一組，整組用組中心算的同一個速度 = `maxKnockback` × (1 − 距離/半徑)，才會一起飛。玩家用 `PlayerController.AddKnockback` (外力速度，跟黑洞拉力一起疊加、`knockbackTime` 內線性衰減、不留慣性；被炸飛中不吃 `GroundCarry`)；電池、沒電的無人機也是速度一次加上去、再用 `Knockback.Decay` 在同樣的 `knockbackTime` 內扣掉 (水平扣到 0 為止，撞牆不反彈)，軌跡跟玩家一致。不傷害玩家；半徑內的可破壞方塊會被破壞 (隔牆也會)。
 - **Player**：`PlayerController` 移動跳躍；`PlayerAnimator` 直接換 sprite 播逐格動畫 (不用 Animator)，圖來自 `Assets/Art/protagnist/pro-Sheet.png` (4 格 50x40，PPU 24，pivot 離底 19px)，空中用 `jump-Sheet.png` (7 格 50x50，依垂直速度選格，pivot 也離底 19px 讓腳對齊)；拿槍：選中傳送槍 / 黑洞槍 → 播 `gun1-Sheet` / `gun2-Sheet` (拿槍，9 格) 一次後停在最後一格，射擊成功時道具呼叫 `PlayerAnimator.PlayShot` 播 `gun*-shot-Sheet` (4 格)，拿槍站著 / 射擊時面向滑鼠；拿槍走路、拿槍在空中 → 循環 `gun*-walk-Sheet` (4 格，面向移動方向，不播拿槍動畫)；操控無人機 → `pad-take-Sheet` (6 格) 一次 → 循環 `pad-using-Sheet` (4 格)。沒拿槍時空中用 jump。優先順序：空中 (沒拿槍) > 平板 > 射擊 > 拿槍走路 / 拿槍空中 > 走路 > 拿槍 > 站立。這些 50x50 的 sheet 都是 PPU 24、pivot (0.5, 0.38)；`AimLine` 瞄準提示線 (問 `ItemDefinition.GetAimPath`)；`SpawnPreview` 生成位置預覽 (道具實作 `ISpawnPreviewItem`：電池倉、無人機；位置規則在 `SpawnCell`：只能放玩家腳邊左 / 右緊鄰的那一格 (看滑鼠在哪一邊)、被擋住或隔牆就不能放、玩家在空中不能生成也不顯示預覽 `SpawnCell.CanSpawnNow`)；`PlayerRocket` 火箭狀態與噴射粒子。
 - **特效**：Unity ParticleSystem，共用材質 `Assets/Art/Placeholder/Particle.mat` (URP 2D Sprite-Unlit + 圓形貼圖)。火箭 = Player 的 `ThrustFx`，黑洞 = BlackHole 的 `PullFx`。一次性特效放 `Assets/Prefabs/Fx/` (stopAction = Destroy，直接 Instantiate)：生成電池、傳送 / 子彈消散、落地、走路 (`PlayerAnimator.walkFxFrames`)、無人機墜機、transform 生成 (`RecallSpawnFx`)、磚塊破壞 (`Breakable.breakFx`)；循環的：殘影光點、通關點閃光、電池引信火花 (`FuseFx`)。傳送子彈有 TrailRenderer 拖尾。
-- **UI**：uGUI 的 legacy `Text`。
-  - **工作列** (`Canvas/Taskbar`，圖 `Assets/Art/UI_item/UI.png`，貼齊底部、`AspectRatioFitter` 保持比例)：子物件用 anchors 對齊圖上的像素 (422x18)。最左的 `TerminalButton` 開終端機；`Slot1~5` = `InventorySlotUI`，`InventoryUI.slots` 直接拖場景裡的格子 (不再用 prefab 生成)，選中框 = `UI_select.png`。物品欄 5 格 (`Inventory.slotCount`)。
-  - **終端機** (`Canvas/Terminal` 上的 `TerminalUI`，取代舊的 M 地圖，背景 `SavePage.png`)：M 鍵 / 工作列圖示開關，開著時暫停。左上 `[settings]` → 音量 (`GameAudio`) / exit / back。文字用英文 (WebGL 字型問題)。
+- **UI**：uGUI 的 legacy `Text`，字型一律用 `Assets/Art/Font/Cubic_11.ttf` (像素字型，含中文；Rendering Mode = Hinted Raster)。新增文字記得換字型 (`TerminalUI` / `TitleMenu` 的 `font` 欄位、`Battery.fuseFont` 也是)。
+  - **工作列** (`Canvas/Taskbar`，圖 `Assets/Art/UI_item/UI.png`，貼齊底部、`AspectRatioFitter` 保持比例)：子物件用 anchors 對齊圖上的像素 (422x18)。最左的 `TerminalButton` 開終端機；`Slot1~5` = `InventorySlotUI`，`InventoryUI.slots` 直接拖場景裡的格子 (不再用 prefab 生成)，選中框 = `UI_select.png`。物品欄 5 格 (`Inventory.slotCount`)。次數 `Uses` = 字級 34 + 黑色 `Outline`。
+  - **終端機** (`Canvas/Terminal` 上的 `TerminalUI`，取代舊的 M 地圖，背景 `SavePage.png`)：M 鍵 / 工作列圖示開關，開著時暫停。Panel 1677x1053、背景 alpha 0.97、字級 42 / 行高 60。左上 `[settings]` → 音量 (`GameAudio`) / exit / back。文字用英文 (WebGL 字型問題)。
   - **綠字選單** `TerminalMenu` (純 C# 類別，終端機和標題共用)：`Clear` → `Add` 數行 → `EndBuild`，每行是程式產生的 `TerminalRow` (Text)，放進 VerticalLayoutGroup；滑鼠 hover / click、WASD + Enter (`HandleInput`)。
-  - **標題** (`TitleMenu`)：背景 `UIFrameAnimation` 循環播 `Assets/Art/main` (8 fps)，閃爍「Click to start」；點擊 / Enter / Space → `SavePopup` (SavePage 視窗)：new save (已有存檔按兩次) / save1 / save2，× 或 Esc 關閉。
+  - **標題** (`TitleMenu`)：背景 `UIFrameAnimation` 循環播 `Assets/Art/main` (8 fps，開始的字畫在背景上，沒有另外的提示文字)；點擊 / Enter / Space → `SavePopup` (SavePage 視窗，尺寸 / 字級跟終端機一致)：new save (已有存檔按兩次) / save1 / save2，× 或 Esc 關閉。
+  - **劇情對話** (`Canvas/Dialogue` 上的 `DialogueUI`，框 `dialogue.png` ×5 放在畫面下方)：打字機 + 每個字播 `chat.wav` (隨機音高)；Space / Enter / E / 左鍵 = 打字中顯示整句、否則下一句。文本在 GameManager 的 `introLoop1` / `introLoop2` (一行一句)，`ApplySaveData` 走到「沒有快照」(新遊戲 / 二周目開始) 才播 (`IntroRoutine`)，讀檔、死亡重載不播。播放中 `GameInput.Locked` (世界照跑) 且 `Busy` (不能開終端機)。
   - **逐格 UI 動畫** `UIFrameAnimation` (Image 換 sprite，unscaled time，loop 或播一次 `Finished`)。
-- **Audio**：`GameAudio` (static 音量 0~10，只在記憶體)、`MusicPlayer` (場景放一個、指定 clip)、`Sfx.Play(clip)`。專案目前還沒有任何音檔。
+- **Audio**：`GameAudio` (static 音量 0~10，只在記憶體)、`MusicPlayer` (場景放一個、指定 clip)、`Sfx.Play(clip)`。音檔放 `Assets/Audios/SFX/`。音效一律是元件 / 道具上的 `AudioClip xxxSfx` 欄位 + `Sfx.Play`：跳躍 `PlayerController.jumpSfx`、走路 `PlayerAnimator.walkSfx` (跟 `walkFxFrames` 同一格，`Sfx.PlayPitched` 隨機音高 `walkSfxPitch`)、死亡 `GameManager.dieSfx`、爆炸 / 引信倒數 `Battery.explosionSfx` / `fuseTickSfx` (每 `fuseTickInterval` 秒一聲)、射擊 `TeleportGunItem` / `BlackHoleGunItem.shootSfx`、放電池 `BatteryItem.spawnSfx`、傳送 `TeleportBullet.teleportSfx`、拉桿 `Lever.pullSfx`、選單按下 `TerminalUI` / `TitleMenu.clickSfx` (傳給 `TerminalMenu`)、對話 `DialogueUI.voice`。
 - **黑白效果**：`Assets/Art/Shaders/Grayscale.mat` (shader `TUGJ/Grayscale`)，UI Image 和 SpriteRenderer 共用。
 - **Editor/DevContentBuilder**：產生佔位美術與測試場景，見下方。
 
@@ -59,7 +60,6 @@ GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始�
 - 確認新程式已編譯：比對 `Library/ScriptAssemblies/Assembly-CSharp.dll` 與改過的 .cs 的修改時間，或用 `typeof(X).GetMethod("公開方法")` 檢查 (不能 using System.Reflection)。
 
 ## 尚未處理
-- WebGL 上 legacy 字型顯示不了中文，需要加入 CJK 字型。
 - Build 平台還是 Windows，還沒切到 WebGL。
 - 通關點的圖示還是佔位圖。
-- 還沒有音檔 (`MusicPlayer` / `Sfx` 已就緒)。
+- 還沒有音樂，機關 / 無人機 / 落地等音效還沒做 (`MusicPlayer` / `Sfx` 已就緒)。

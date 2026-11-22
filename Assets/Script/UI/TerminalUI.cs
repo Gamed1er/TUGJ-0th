@@ -28,6 +28,8 @@ public class TerminalUI : MonoBehaviour
     [SerializeField] Font font;
     [SerializeField] int fontSize = 30;
     [SerializeField] float rowHeight = 40f;
+    [Tooltip("選單按下 (Enter / 點擊 / 調音量) 的音效")]
+    [SerializeField] AudioClip clickSfx;
     [Tooltip("開終端機時暫停遊戲")]
     [SerializeField] bool pauseWhileOpen = true;
 
@@ -54,7 +56,7 @@ public class TerminalUI : MonoBehaviour
     void Start()
     {
         panel.SetActive(false);
-        menu = new TerminalMenu(font, fontSize, rowHeight, leftColumn, rightColumn);
+        menu = new TerminalMenu(font, fontSize, rowHeight, clickSfx, leftColumn, rightColumn);
         GameManager.Instance.StateChanged += OnStateChanged;
     }
 
