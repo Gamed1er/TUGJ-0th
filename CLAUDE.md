@@ -1,6 +1,6 @@
 # TUGJ0th
 
-GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始需求與企劃想法在 [NoteOld.md](NoteOld.md)，標 (X) 的項目不做；[Note.md](Note.md) 是之後追加的更改清單。
+GameJam 2D 橫向平台遊戲。Unity 6000.3.27f2，目標平台 WebGL。原始需求與企劃想法在 [NoteOld.md](NoteOld.md)，標 (X) 的項目不做；[Note.md](Note.md) 是之後追加的更改清單。[LevelDesign_README.md](LevelDesign_README.md) 是給企劃手動排關卡的說明，改到關卡相關的物件 (Tilemap、SavePoint、MapArea/MapEdge、機關欄位、道具規則) 時要一起更新。
 
 ## 工作方式
 - 用繁體中文回覆。
