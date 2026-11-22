@@ -17,6 +17,8 @@ public class PlayerController : MonoBehaviour
 
     [Header("跳躍")]
     public float jumpVelocity = 12f;
+    [Tooltip("起跳音效")]
+    public AudioClip jumpSfx;
     [Tooltip("離開平台後仍可起跳的時間")]
     public float coyoteTime = 0.1f;
     [Tooltip("落地前提早按跳躍會被記住的時間")]
@@ -117,6 +119,7 @@ public class PlayerController : MonoBehaviour
         if (canJump && Time.time - lastJumpPressedTime <= jumpBufferTime)
         {
             StartJump(allowCut: true);
+            Sfx.Play(jumpSfx);
             rb.linearVelocity = new Vector2(x * moveSpeed, jumpVelocity);
             lastPullY = 0f;
             return;

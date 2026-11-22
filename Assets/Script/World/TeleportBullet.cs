@@ -35,6 +35,8 @@ public class TeleportBullet : MonoBehaviour
     public int searchRadius = 6;
     [Tooltip("傳送特效 (出發點、到達點各播一次)")]
     public GameObject teleportFx;
+    [Tooltip("傳送成功音效")]
+    public AudioClip teleportSfx;
     [Tooltip("沒打到電池、子彈消失時的特效")]
     public GameObject vanishFx;
 
@@ -156,6 +158,7 @@ public class TeleportBullet : MonoBehaviour
             Vector2 from = gm.player.Body.position;
             Vector2 to = FindSpot(gm.player, point, normal);
             gm.player.Teleport(to);
+            Sfx.Play(teleportSfx);
             if (teleportFx != null)
             {
                 Instantiate(teleportFx, from, Quaternion.identity);

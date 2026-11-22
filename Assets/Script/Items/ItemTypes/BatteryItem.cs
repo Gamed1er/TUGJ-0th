@@ -10,6 +10,7 @@ public class BatteryItem : ItemDefinition, ISpawnPreviewItem
     public GameObject batteryPrefab;
     [Tooltip("生成時的特效 (自己播完自己消失)")]
     public GameObject spawnFx;
+    public AudioClip spawnSfx;
     [Tooltip("擋住視線的圖層 (不能隔著它生成)")]
     public LayerMask wallMask = 1 << 8;
 
@@ -30,6 +31,7 @@ public class BatteryItem : ItemDefinition, ISpawnPreviewItem
         Instantiate(batteryPrefab, cell, Quaternion.identity).GetComponent<Battery>().SpawnedByPlayer = true;
         if (spawnFx != null) Instantiate(spawnFx, cell, Quaternion.identity);
         ctx.Consume();
+        Sfx.Play(spawnSfx);
     }
 
     public bool FindSpawnCell(ItemUseContext ctx, out Vector2 cell) =>

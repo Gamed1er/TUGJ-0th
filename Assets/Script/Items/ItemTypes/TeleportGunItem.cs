@@ -11,6 +11,8 @@ using UnityEngine;
 public class TeleportGunItem : ItemDefinition
 {
     public TeleportBullet bulletPrefab;
+    [Tooltip("射出音效")]
+    public AudioClip shootSfx;
 
     public override void OnUseStart(ItemUseContext ctx)
     {
@@ -23,6 +25,7 @@ public class TeleportGunItem : ItemDefinition
 
         Instantiate(bulletPrefab, ctx.player.Body.position, Quaternion.identity).Launch(ctx.AimDirection);
         ctx.Consume();
+        Sfx.Play(shootSfx);
         var anim = ctx.player.GetComponent<PlayerAnimator>();
         if (anim != null) anim.PlayShot(); // 射擊動畫
     }

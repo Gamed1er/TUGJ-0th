@@ -43,6 +43,19 @@ public class GameManager : MonoBehaviour
     [Tooltip("重疊判定的大小 (比電池小一點，剛好貼著牆不算)。跟實體重疊的電池生成後立刻爆炸")]
     public Vector2 recallOverlapSize = new Vector2(0.8f, 0.8f);
 
+    [Header("劇情")]
+    [Tooltip("開場對話框")]
+    public DialogueUI dialogue;
+    [Tooltip("一周目開頭的劇情，一行 = 一句。只在新遊戲第一次進場時播，讀檔 / 死亡重載不播")]
+    [TextArea(3, 15)] public string introLoop1;
+    [Tooltip("二周目開頭的劇情，一行 = 一句")]
+    [TextArea(3, 15)] public string introLoop2;
+    [Tooltip("淡入完成後等幾秒才開始對話")]
+    public float introDelay = 0.6f;
+
+    [Header("音效")]
+    public AudioClip dieSfx;
+
     [Header("規則")]
     [Tooltip("勾選 = 死亡後道具恢復成目前房間的快照 (A)\n取消 = 死亡後道具維持已消耗，並寫回目前房間的快照 (B)")]
     public bool restoreItemsOnDeath = true;
@@ -61,8 +74,8 @@ public class GameManager : MonoBehaviour
     public int Loop => data.loop;
     /// <summary>一周目通關時記錄的電池位置。</summary>
     public IReadOnlyList<Vector2> BatteryRecords => data.batteryRecords;
-    /// <summary>死亡、轉場、切場景中 (不能開終端機)。</summary>
-    public bool Busy => dying || transitioning;
+    /// <summary>死亡、轉場、切場景、劇情對話中 (不能開終端機)。</summary>
+    public bool Busy => dying || transitioning || talking;
 
     readonly List<MapArea> rooms = new List<MapArea>();
     /// <summary>目前這條時間線上已經用過 transform 的房間 (跟物品欄一起存進房間快照)。</summary>
@@ -71,6 +84,7 @@ public class GameManager : MonoBehaviour
     SaveData data;
     bool dying;
     bool transitioning;
+    bool talking;
 
     void Awake()
     {
@@ -120,6 +134,7 @@ public class GameManager : MonoBehaviour
             recallUsedAreas.Clear();
             var area = MapArea.Find(playerStart.position);
             if (area != null) EnterRoom(area, playerStart.position, silent: true);
+            StartCoroutine(IntroRoutine(data.loop >= 2 ? introLoop2 : introLoop1));
         }
         else
         {
@@ -141,6 +156,22 @@ public class GameManager : MonoBehaviour
     }
 
     void Save() => SaveSystem.Save(SaveSystem.CurrentSlot, data);
+
+    /// <summary>周目開頭的劇情：等淡入完 → 鎖住玩家輸入 (世界照跑) → 播對話 → 解鎖。</summary>
+    IEnumerator IntroRoutine(string text)
+    {
+        if (dialogue == null || string.IsNullOrWhiteSpace(text)) yield break;
+        var lines = new List<string>();
+        foreach (var line in text.Split('\n'))
+            if (line.Trim().Length > 0) lines.Add(line.Trim());
+
+        talking = true;
+        GameInput.Locked = true;
+        yield return new WaitForSecondsRealtime((fader != null ? fader.duration : 0f) + introDelay);
+        yield return dialogue.Play(lines);
+        GameInput.Locked = false; // 協程在 Update 之後才跑，最後一下按鍵不會在同一幀被當成跳躍 / 互動
+        talking = false;
+    }
 
     // ---------- 房間 (自動存檔) ----------
 
@@ -316,6 +347,7 @@ public class GameManager : MonoBehaviour
     IEnumerator DeathRoutine()
     {
         dying = true;
+        Sfx.Play(dieSfx);
         GameInput.Locked = true;
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();

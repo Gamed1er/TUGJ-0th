@@ -18,3 +18,4 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 68e83032edfb5bc4386486397ea6e4c9, type: 3}
   startingUses: 3
   blackHolePrefab: {fileID: 2219452617054987570, guid: eabd7591c80c49d4caf8a3683e3386d7, type: 3}
+  shootSfx: {fileID: 8300000, guid: f4d7dbe0b6ac1f24f86905c453e6d0a9, type: 3}

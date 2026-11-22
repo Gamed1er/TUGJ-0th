@@ -29,6 +29,7 @@ public class Battery : MonoBehaviour
     public float chainDelay = 0.1f;
     [Tooltip("爆炸特效 (生成在電池位置，自己播完自己消失)")]
     public GameObject explosionFx;
+    public AudioClip explosionSfx;
     [Tooltip("勾選 = 火箭尾氣不會引爆 (固有電池)")]
     public bool rocketProof;
 
@@ -41,8 +42,13 @@ public class Battery : MonoBehaviour
     public Vector2 fuseFlashRate = new Vector2(3f, 12f);
     [Tooltip("倒數數字在電池上方的位置")]
     public Vector2 fuseTextOffset = new Vector2(0f, 0.9f);
+    [Tooltip("倒數數字的字型 (沒指定 = 內建字型)")]
+    public Font fuseFont;
     [Tooltip("倒數中的循環特效 (火花，生成在電池上當子物件，爆炸時一起消失)")]
     public GameObject fuseFx;
+    [Tooltip("倒數的嗶聲 (點燃時一聲，之後每 fuseTickInterval 秒一聲)")]
+    public AudioClip fuseTickSfx;
+    public float fuseTickInterval = 0.5f;
 
     [Header("推動")]
     [Tooltip("會擋住推動的圖層 (Ground)")]
@@ -52,6 +58,7 @@ public class Battery : MonoBehaviour
 
     bool exploded, explodeScheduled;
     float fuseLeft = -1f;    // < 0 = 沒有點燃
+    float nextTick;          // 下一聲倒數嗶聲在 fuseLeft 降到多少時
     float flashPhase;
     SpriteRenderer sr;
     Color baseColor;
@@ -112,6 +119,7 @@ public class Battery : MonoBehaviour
 
         Vector2 center = rb.position;
         if (explosionFx != null) Instantiate(explosionFx, center, Quaternion.identity);
+        Sfx.Play(explosionSfx);
 
         var filter = new ContactFilter2D { useTriggers = false };
         int n = Physics2D.OverlapCircle(center, explosionRadius, filter, overlap);
@@ -146,15 +154,16 @@ public class Battery : MonoBehaviour
     {
         if (exploded || IsFusing) return;
         fuseLeft = fuseTime;
+        nextTick = fuseTime;
         flashPhase = 0f;
         if (fuseFx != null) Instantiate(fuseFx, transform.position, Quaternion.identity, transform);
 
-        // 倒數數字：世界座標的 TextMesh (只有數字，內建字型就夠)
+        // 倒數數字：世界座標的 TextMesh
         var go = new GameObject("FuseText");
         go.transform.SetParent(transform, false);
         go.transform.localPosition = fuseTextOffset;
         fuseText = go.AddComponent<TextMesh>();
-        var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        var font = fuseFont != null ? fuseFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         fuseText.font = font;
         fuseText.fontSize = 64;
         fuseText.characterSize = 0.06f;
@@ -175,8 +184,14 @@ public class Battery : MonoBehaviour
         UpdateFuseVisual();
     }
 
+    /// <summary>引信的閃爍、倒數數字、嗶聲。</summary>
     void UpdateFuseVisual()
     {
+        if (fuseLeft <= nextTick && fuseTickInterval > 0f)
+        {
+            Sfx.Play(fuseTickSfx);
+            nextTick -= fuseTickInterval;
+        }
         float t = fuseTime > 0f ? 1f - fuseLeft / fuseTime : 1f;
         flashPhase += Time.deltaTime * Mathf.Lerp(fuseFlashRate.x, fuseFlashRate.y, t);
         if (sr != null) sr.color = Mathf.Repeat(flashPhase, 1f) < 0.5f ? fuseColor : baseColor;

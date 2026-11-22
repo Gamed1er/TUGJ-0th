@@ -19,3 +19,4 @@ MonoBehaviour:
   icon: {fileID: 21300000, guid: 7240a5b3674b295448e9c2214d0d06e4, type: 3}
   startingUses: 3
   bulletPrefab: {fileID: 5766907398339030761, guid: fd34370aae526e84a807cc2c385151f9, type: 3}
+  shootSfx: {fileID: 8300000, guid: f4d7dbe0b6ac1f24f86905c453e6d0a9, type: 3}

@@ -5250,6 +5250,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 6
   jumpVelocity: 12
+  jumpSfx: {fileID: 8300000, guid: b0367e5ddabffe4438f79c2d06bc50b1, type: 3}
   coyoteTime: 0.1
   jumpBufferTime: 0.1
   jumpCutMultiplier: 0.5
@@ -5357,6 +5358,7 @@ MonoBehaviour:
   - {fileID: 1059672782, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
   - {fileID: -393889962, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
   - {fileID: 27734006, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
+  teleportWalk: []
   blackHoleDraw:
   - {fileID: -1570805081, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
   - {fileID: -1804548324, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
@@ -5372,6 +5374,7 @@ MonoBehaviour:
   - {fileID: 223310724, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
   - {fileID: -1715525909, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
   - {fileID: -1858810708, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
+  blackHoleWalk: []
   drawFps: 18
   shotFps: 16
   padTake:
@@ -5391,6 +5394,9 @@ MonoBehaviour:
   landFxMinAirTime: 0.25
   walkFx: {fileID: 4087009329842214456, guid: 0ba93a16deeb4634d9a99cada418f7eb, type: 3}
   walkFxFrames: 0000000002000000
+  walkSfx: {fileID: 8300000, guid: bdb8e6d5fd712ef458dd7eb1465d1260, type: 3}
+  walkSfxVolume: 0.5
+  walkSfxPitch: {x: 0.85, y: 1.15}
 --- !u!114 &2558607758559941649
 MonoBehaviour:
   m_ObjectHideFlags: 0
