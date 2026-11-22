@@ -3,63 +3,61 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 一個存檔欄位的完整內容。用 JsonUtility 序列化，所以只能用 public 欄位 / List / 可序列化 class。
-/// 要存新東西就在這裡加欄位，並在 GameManager 處理。改了格式就把 CurrentVersion +1 (舊存檔會被當成空欄位)。
+/// 一個存檔 (save1 = 一周目、save2 = 二周目) 的完整內容。只能用 public 欄位 / List / 可序列化 class。
+/// 要存新東西就在這裡加欄位，並在 GameManager 處理。
 ///
-/// 模型：每個節點 (SavePoint) 各有一份快照 (到達當下的物品欄)。
-/// currentNodeId = 目前的重生點；死亡 / 回溯都會回到這個節點的快照。
+/// 模型：每個房間 (MapArea) 各有一份快照 (進入房間當下的物品欄 + 重生位置)。
+/// currentRoomId = 目前的重生房間；死亡 / 讀檔都會回到這個房間的快照。
 /// </summary>
 [Serializable]
 public class SaveData
 {
-    public const int CurrentVersion = 3;
+    /// <summary>目前的重生房間 (MapArea.Id)；空字串 = 還沒存過 (從 PlayerStart 出生、拿開局道具)。</summary>
+    public string currentRoomId = "";
 
-    /// <summary>存檔格式版本，由 SaveSystem.Save 寫入。不符 = 舊存檔，當作空欄位。</summary>
-    public int version;
+    /// <summary>各房間的快照 (每個房間最多一份)。</summary>
+    public List<RoomSnapshot> snapshots = new List<RoomSnapshot>();
 
-    /// <summary>目前的重生節點 ID；空字串 = 還沒到過任何節點 (從 PlayerStart 出生、拿開局道具)。</summary>
-    public string currentNodeId = "";
+    /// <summary>去過的房間。</summary>
+    public List<string> discoveredRooms = new List<string>();
 
-    /// <summary>各節點的快照 (每個節點最多一份)。</summary>
-    public List<NodeSnapshot> snapshots = new List<NodeSnapshot>();
-
-    /// <summary>去過的節點 (地圖上亮起)。</summary>
-    public List<string> discoveredSavePoints = new List<string>();
-
-    /// <summary>已被消耗/停用的節點 (預留給企劃的「消耗存檔」trick)：不會存檔、不能回溯。</summary>
-    public List<string> disabledSavePoints = new List<string>();
-
-    /// <summary>第幾周目 (1 或 2)。一周目通關 (ClearGoal) 後變成 2，回不去 1。</summary>
+    /// <summary>第幾周目 (1 或 2)。</summary>
     public int loop = 1;
 
-    /// <summary>一周目通關當下，玩家生成的電池位置 (二周目「請輸入文本」用)。屬於哪個區段由位置判斷 (MapArea.Find)。</summary>
+    /// <summary>一周目通關當下，玩家生成的電池位置 (二周目 transform 用)。屬於哪個房間由位置判斷 (MapArea.Find)。</summary>
     public List<Vector2> batteryRecords = new List<Vector2>();
 
     /// <summary>最後存檔時間，給標題畫面顯示。</summary>
     public string lastSaveTime = "";
 
-    public NodeSnapshot FindSnapshot(string nodeId) => snapshots.Find(s => s.nodeId == nodeId);
+    public RoomSnapshot FindSnapshot(string roomId) => snapshots.Find(s => s.roomId == roomId);
 
-    /// <summary>取得 (沒有就建立) 某節點的快照。</summary>
-    public NodeSnapshot GetOrCreateSnapshot(string nodeId)
+    /// <summary>取得 (沒有就建立) 某房間的快照。</summary>
+    public RoomSnapshot GetOrCreateSnapshot(string roomId)
     {
-        var s = FindSnapshot(nodeId);
-        if (s == null) { s = new NodeSnapshot { nodeId = nodeId }; snapshots.Add(s); }
+        var s = FindSnapshot(roomId);
+        if (s == null) { s = new RoomSnapshot { roomId = roomId }; snapshots.Add(s); }
         return s;
     }
+
+    /// <summary>深拷貝 (存進 / 讀出 SaveSystem 時用，避免遊戲中改到存檔本體)。</summary>
+    public SaveData Clone() => JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(this));
 }
 
-/// <summary>某個節點的快照：到達該節點當下的物品欄。</summary>
+/// <summary>某個房間的快照：進入該房間當下的物品欄與重生位置。</summary>
 [Serializable]
-public class NodeSnapshot
+public class RoomSnapshot
 {
-    public string nodeId = "";
+    public string roomId = "";
+
+    /// <summary>重生位置 (進入房間時的落點)。</summary>
+    public Vector2 spawn;
 
     /// <summary>物品欄內容，長度 = 格數；空格的 itemId 為空字串。</summary>
     public List<ItemSave> items = new List<ItemSave>();
     public int selectedSlot;
 
-    /// <summary>二周目：已經用過「請輸入文本」的區段 (MapArea.Id)。</summary>
+    /// <summary>二周目：已經用過 transform 的房間 (MapArea.Id)。</summary>
     public List<string> recallUsedAreas = new List<string>();
 }
 

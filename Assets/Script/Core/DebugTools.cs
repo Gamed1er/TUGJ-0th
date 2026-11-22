@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// 開發用快捷鍵，只在編輯器與 Development Build 生效 (正式版自動失效)。
-/// F1 補滿所有道具 / F2 清除所有存檔 / F3 瞬移到下一個存檔點 / F4 無敵 / F5 自殺 / F6 回標題 / F12 顯示說明
+/// F1 補滿所有道具 / F2 清除所有存檔 / F3 瞬移到下一個房間 / F4 無敵 / F5 自殺 / F6 回標題 / F12 顯示說明
 /// </summary>
 public class DebugTools : MonoBehaviour
 {
@@ -31,12 +31,18 @@ public class DebugTools : MonoBehaviour
             SaveSystem.DeleteAll();
             ToastUI.Show("[Debug] 已清除所有存檔");
         }
-        if (kb.f3Key.wasPressedThisFrame && gm.SavePoints.Count > 0)
+        if (kb.f3Key.wasPressedThisFrame && gm.Rooms.Count > 0)
         {
-            teleportIndex = (teleportIndex + 1) % gm.SavePoints.Count;
-            var sp = gm.SavePoints[teleportIndex];
-            gm.player.Teleport(sp.SpawnPosition);
-            ToastUI.Show($"[Debug] 瞬移到 {sp.DisplayName}");
+            // 下一個房間：瞬移到那個房間裡任一個 MapEdge 的入口 (不會存檔)
+            teleportIndex = (teleportIndex + 1) % gm.Rooms.Count;
+            var room = gm.Rooms[teleportIndex];
+            foreach (var edge in FindObjectsByType<MapEdge>(FindObjectsSortMode.None))
+            {
+                if (!room.Contains(edge.EntryPoint)) continue;
+                gm.player.Teleport(edge.EntryPoint);
+                ToastUI.Show($"[Debug] 瞬移到 room{teleportIndex + 1}");
+                break;
+            }
         }
         if (kb.f4Key.wasPressedThisFrame)
         {

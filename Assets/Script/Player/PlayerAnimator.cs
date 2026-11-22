@@ -6,9 +6,10 @@ using UnityEngine;
 /// - 離地 (跳躍、掉落、火箭飛行) → 依垂直速度從 jumpFrames 選一格：
 ///   速度 ≥ +jumpSpeedRange = 第一格 (剛起跳)，≤ -jumpSpeedRange = 最後一格 (下落)，中間線性對應 (接近最高點 = 中間的格)
 /// 拿槍 (傳送槍 / 黑洞槍)：選中那一格 → 播拿槍動畫 (draw) 一次，之後停在最後一格；射擊成功 (PlayShot) → 播射擊動畫一次。
-///   站著 / 射擊時角色面向滑鼠；走路、空中照舊用 walkFrames / jumpFrames (還沒有拿槍走路的圖)。
+///   站著 / 射擊時角色面向滑鼠。拿槍走路 → 循環播 teleportWalk / blackHoleWalk (面向移動方向)，不播拿槍動畫；
+///   停下來時直接停在拿槍動畫的最後一格。空中照舊用 jumpFrames。
 /// 操控無人機 (Drone.Controlled)：播 padTake 一次 → 循環 padUsing。
-/// 優先順序：空中 > 無人機平板 > 射擊 > 走路 > 拿槍 > 站立。
+/// 優先順序：空中 > 無人機平板 > 射擊 > 拿槍走路 > 走路 > 拿槍 > 站立。
 /// 特效：落地 (landFx)、走路落腳 (walkFx，walkFxFrames 指定哪幾格)。
 /// 左右翻轉平常由 PlayerController 處理 (sprite.flipX)，拿槍站著時這裡改成面向滑鼠。
 /// </summary>
@@ -34,10 +35,14 @@ public class PlayerAnimator : MonoBehaviour
     [SerializeField] Sprite[] teleportDraw;
     [Tooltip("傳送槍：射擊動畫")]
     [SerializeField] Sprite[] teleportShot;
+    [Tooltip("傳送槍：拿槍走路 (循環，速度同 frameTime)")]
+    [SerializeField] Sprite[] teleportWalk;
     [Tooltip("黑洞槍：拿出來的動畫 (最後一格 = 拿著的樣子)")]
     [SerializeField] Sprite[] blackHoleDraw;
     [Tooltip("黑洞槍：射擊動畫")]
     [SerializeField] Sprite[] blackHoleShot;
+    [Tooltip("黑洞槍：拿槍走路 (循環，速度同 frameTime)")]
+    [SerializeField] Sprite[] blackHoleWalk;
     [Tooltip("拿槍動畫每秒幾格")]
     [SerializeField] float drawFps = 18f;
     [Tooltip("射擊動畫每秒幾格")]
@@ -84,12 +89,12 @@ public class PlayerAnimator : MonoBehaviour
     public void PlayShot() => shotTime = 0f;
 
     /// <summary>目前選中的槍的動畫 (沒拿槍回傳 false)。</summary>
-    bool GunFrames(out Sprite[] draw, out Sprite[] shot)
+    bool GunFrames(out Sprite[] draw, out Sprite[] shot, out Sprite[] walk)
     {
         var def = inventory != null && inventory.SelectedItem != null ? inventory.SelectedItem.definition : null;
-        draw = shot = null;
-        if (def is TeleportGunItem) { draw = teleportDraw; shot = teleportShot; }
-        else if (def is BlackHoleGunItem) { draw = blackHoleDraw; shot = blackHoleShot; }
+        draw = shot = walk = null;
+        if (def is TeleportGunItem) { draw = teleportDraw; shot = teleportShot; walk = teleportWalk; }
+        else if (def is BlackHoleGunItem) { draw = blackHoleDraw; shot = blackHoleShot; walk = blackHoleWalk; }
         return draw != null && draw.Length > 0;
     }
 
@@ -115,7 +120,7 @@ public class PlayerAnimator : MonoBehaviour
         if (controlling && !wasControlling) padTime = 0f;
         wasControlling = controlling;
         padTime += Time.deltaTime;
-        bool hasGun = GunFrames(out var draw, out var shot);
+        bool hasGun = GunFrames(out var draw, out var shot, out var gunWalk);
         bool shooting = hasGun && shot != null && shot.Length > 0 && shotTime >= 0f && shotTime < shot.Length / shotFps;
 
         if (player.IsGrounded && airTime > landFxMinAirTime && landFx != null)
@@ -166,9 +171,16 @@ public class PlayerAnimator : MonoBehaviour
             return;
         }
 
+        // 走路 (拿槍 → 拿槍走路的圖；面向由 PlayerController 依移動方向決定)
+        var frames = walkFrames;
+        if (hasGun && gunWalk != null && gunWalk.Length > 0)
+        {
+            frames = gunWalk;
+            drawTime = 1000f; // 走路中不播拿槍動畫，停下來直接是拿好槍的樣子
+        }
         timer += Time.deltaTime;
-        int walkFrame = (int)(timer / frameTime) % walkFrames.Length;
-        sprite.sprite = walkFrames[walkFrame];
+        int walkFrame = (int)(timer / frameTime) % frames.Length;
+        sprite.sprite = frames[walkFrame];
         if (walkFrame != lastWalkFrame)
         {
             lastWalkFrame = walkFrame;

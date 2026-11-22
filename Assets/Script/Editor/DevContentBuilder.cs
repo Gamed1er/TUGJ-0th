@@ -16,6 +16,8 @@ using UnityEngine.UI;
 /// 選單：Tools/TUGJ/Build Test Content。
 /// 注意：會覆蓋 Assets/Art/Placeholder、Assets/Prefabs、Title.unity、Game.unity。美術換圖後就不要再跑了。
 /// 這只是開發輔助工具，正式關卡請在 Game 場景直接用 Tile Palette 畫。
+/// ⚠ 已過時：存檔改成以房間為單位、M 地圖改成終端機 (TerminalUI)、物品欄改成工作列之後，這裡沒有跟著更新
+/// (不會產生終端機與工作列)。Game 場景現在的 UI 是手動 / MCP 建的，不要再執行這個工具。
 /// </summary>
 public static class DevContentBuilder
 {
@@ -229,7 +231,6 @@ public static class DevContentBuilder
     {
         public GameObject player, savePoint, lever, battery, door, plate, breakable, blackHole, drone, platform;
         public InventorySlotUI slot;
-        public MapNodeUI mapNode;
     }
 
     static Prefabs BuildPrefabs(Art art)
@@ -399,14 +400,6 @@ public static class DevContentBuilder
         Set(rocket, "thrustFx", thrust);
         p.player = SavePrefab(player, "Player");
 
-        // --- 節點 (隱形自動存檔點；範圍蓋住整條通道高度，玩家飛過也會觸發) ---
-        var sp = new GameObject("SavePoint") { layer = 2 };
-        var spCol = sp.AddComponent<BoxCollider2D>();
-        spCol.isTrigger = true; spCol.size = new Vector2(1f, 14f); spCol.offset = new Vector2(0f, 7f);
-        var spComp = sp.AddComponent<SavePoint>();
-        Set(spComp, "spawnOffset", new Vector2(0f, 0.8f));
-        Set(spComp, "id", "");
-        p.savePoint = SavePrefab(sp, "SavePoint");
 
         // --- 拉桿 (原點 = 地面表面) ---
         var lever = new GameObject("Lever") { layer = 2 };
@@ -484,17 +477,6 @@ public static class DevContentBuilder
         Set(slotUI, "background", bg);
         p.slot = SavePrefab(slot.gameObject, "UI/InventorySlot").GetComponent<InventorySlotUI>();
 
-        // --- UI：地圖節點 ---
-        var node = NewUI("MapNode", null, new Vector2(28, 28));
-        var dot = node.gameObject.AddComponent<Image>();
-        dot.sprite = art.circle;
-        var nodeLabel = NewText("Label", node, "???", 22, TextAnchor.UpperCenter);
-        nodeLabel.rectTransform.sizeDelta = new Vector2(200, 30);
-        nodeLabel.rectTransform.anchoredPosition = new Vector2(0, -32);
-        var nodeUI = node.gameObject.AddComponent<MapNodeUI>();
-        Set(nodeUI, "dot", dot);
-        Set(nodeUI, "label", nodeLabel);
-        p.mapNode = SavePrefab(node.gameObject, "UI/MapNode").GetComponent<MapNodeUI>();
 
         return p;
     }
@@ -587,7 +569,7 @@ public static class DevContentBuilder
         title.rectTransform.anchoredPosition = new Vector2(0, 320);
         title.rectTransform.sizeDelta = new Vector2(1200, 120);
 
-        var slots = new TitleSlotUI[SaveSystem.SlotCount];
+        var slots = new TitleSlotUI[3]; // 新的存檔 / save1 / save2
         for (int i = 0; i < slots.Length; i++)
         {
             var row = NewUI($"Slot{i + 1}", canvas, new Vector2(700, 110));
@@ -595,15 +577,10 @@ public static class DevContentBuilder
 
             var play = NewButton("PlayButton", row, new Vector2(540, 110), out var playLabel, 32);
             play.GetComponent<RectTransform>().anchoredPosition = new Vector2(-80, 0);
-            var del = NewButton("DeleteButton", row, new Vector2(140, 110), out var delLabel, 28);
-            del.GetComponent<RectTransform>().anchoredPosition = new Vector2(280, 0);
-            del.GetComponent<Image>().color = new Color(0.5f, 0.15f, 0.15f);
 
             var ui = row.gameObject.AddComponent<TitleSlotUI>();
             Set(ui, "playButton", play);
             Set(ui, "playLabel", playLabel);
-            Set(ui, "deleteButton", del);
-            Set(ui, "deleteLabel", delLabel);
             slots[i] = ui;
         }
 
@@ -628,14 +605,12 @@ public static class DevContentBuilder
         p = new Prefabs
         {
             player = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Player.prefab"),
-            savePoint = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/SavePoint.prefab"),
             lever = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Lever.prefab"),
             platform = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/MovingPlatform.prefab"),
             door = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Door.prefab"),
             plate = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/PressurePlate.prefab"),
             breakable = AssetDatabase.LoadAssetAtPath<GameObject>($"{PrefabDir}/Breakable.prefab"),
             slot = AssetDatabase.LoadAssetAtPath<InventorySlotUI>($"{PrefabDir}/UI/InventorySlot.prefab"),
-            mapNode = AssetDatabase.LoadAssetAtPath<MapNodeUI>($"{PrefabDir}/UI/MapNode.prefab"),
         };
         rocketItem = AssetDatabase.LoadAssetAtPath<RocketItem>($"{ItemDir}/Rocket.asset");
         batteryItem = AssetDatabase.LoadAssetAtPath<BatteryItem>($"{ItemDir}/Battery.asset");
@@ -684,11 +659,6 @@ public static class DevContentBuilder
         player.transform.position = start.position;
 
         // --- 存檔點 ---
-        PlaceSavePoint(p, "起點營地", new Vector2(-3.5f, 0f));
-        PlaceSavePoint(p, "高牆前", new Vector2(32.5f, 0f));      // 高牆要用火箭
-        PlaceSavePoint(p, "壓力板前", new Vector2(48.5f, 0f));    // 電池壓板開門
-        PlaceSavePoint(p, "第二區", new Vector2(84.5f, 0f));      // 黑洞打破牆
-        PlaceSavePoint(p, "高架壓力板", new Vector2(106.5f, 0f)); // 把電池弄上高台
 
         // --- 機關 ---
         var doorA = PlaceDoor(p, 56, 0, 4);
@@ -705,7 +675,6 @@ public static class DevContentBuilder
         Set(lever, "targets", new Activatable[] { bridge });
 
         // --- 地圖 B 延伸 ---
-        PlaceSavePoint(p, "升降平台", new Vector2(138.5f, 0f));
         // 升降平台：凹槽 x = 142~144，頂面從 y = 0 升到 y = 6 (右邊高台)。
         // 站在平台上面向左用電池倉 → 電池剛好生成在 x = 141 的壓力板上 → 平台載人上升。
         // 平台最左格 (x = 142) 上方 y = 7 有低天花板 → 站在那格上升會被擠死 (測試用)。
@@ -752,8 +721,9 @@ public static class DevContentBuilder
         layout.childForceExpandWidth = layout.childForceExpandHeight = false;
         var invUI = bar.gameObject.AddComponent<InventoryUI>();
         Set(invUI, "inventory", player.GetComponent<Inventory>());
-        Set(invUI, "slotPrefab", p.slot);
-        Set(invUI, "container", bar);
+        var invSlots = new InventorySlotUI[5];
+        for (int i = 0; i < invSlots.Length; i++) invSlots[i] = (InventorySlotUI)PrefabUtility.InstantiatePrefab(p.slot, bar);
+        Set(invUI, "slots", invSlots);
 
         // 道具狀態 (物品欄上方：提示文字 + 火箭藍條)
         var status = NewUI("ItemStatus", canvas, new Vector2(600, 90));
@@ -806,31 +776,6 @@ public static class DevContentBuilder
         Set(toastUI, "group", toast.gameObject.AddComponent<CanvasGroup>());
         Set(toastUI, "label", toastText);
 
-        // 地圖
-        var mapHost = NewUI("Map", canvas, Vector2.zero);
-        Stretch(mapHost, 0);
-        var mapPanel = NewImage("Panel", mapHost, new Color(0.05f, 0.07f, 0.1f, 0.92f));
-        Stretch(mapPanel.rectTransform, 0);
-        var mapTitle = NewText("Title", mapPanel.rectTransform, "地圖 (M 關閉)", 40, TextAnchor.MiddleCenter);
-        mapTitle.rectTransform.anchorMin = mapTitle.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-        mapTitle.rectTransform.sizeDelta = new Vector2(600, 80);
-        mapTitle.rectTransform.anchoredPosition = new Vector2(0, -70);
-        var mapHint = NewText("Hint", mapPanel.rectTransform, "", 28, TextAnchor.MiddleCenter);
-        mapHint.rectTransform.anchorMin = mapHint.rectTransform.anchorMax = new Vector2(0.5f, 0f);
-        mapHint.rectTransform.sizeDelta = new Vector2(1200, 60);
-        mapHint.rectTransform.anchoredPosition = new Vector2(0, 70);
-        var nodeArea = NewUI("NodeArea", mapPanel.rectTransform, Vector2.zero);
-        Stretch(nodeArea, 0);
-        nodeArea.offsetMin = new Vector2(120, 120); nodeArea.offsetMax = new Vector2(-120, -160);
-        var marker = NewImage("PlayerMarker", nodeArea, new Color(1f, 0.55f, 0.25f));
-        marker.sprite = art.circle;
-        marker.rectTransform.sizeDelta = new Vector2(18, 18);
-        var mapUI = mapHost.gameObject.AddComponent<MapUI>();
-        Set(mapUI, "panel", mapPanel.gameObject);
-        Set(mapUI, "nodeArea", nodeArea);
-        Set(mapUI, "nodePrefab", p.mapNode);
-        Set(mapUI, "playerMarker", marker.rectTransform);
-        Set(mapUI, "hintLabel", mapHint);
 
         var fader = MakeFader(canvas);
 
@@ -928,16 +873,6 @@ public static class DevContentBuilder
         var edge = go.AddComponent<MapEdge>();
         Set(edge, "entryOffset", entryOffset);
         return edge;
-    }
-
-    static void PlaceSavePoint(Prefabs p, string name, Vector2 pos)
-    {
-        var go = (GameObject)PrefabUtility.InstantiatePrefab(p.savePoint);
-        go.name = $"SavePoint ({name})";
-        go.transform.position = pos;
-        var sp = go.GetComponent<SavePoint>();
-        Set(sp, "displayName", name);
-        Set(sp, "id", "save_" + System.Guid.NewGuid().ToString("N").Substring(0, 8));
     }
 
     static GameObject PlacePrefab(GameObject prefab, string name, Vector2 pos)

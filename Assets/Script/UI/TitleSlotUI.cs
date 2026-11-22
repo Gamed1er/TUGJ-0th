@@ -2,50 +2,53 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 標題畫面的一個存檔欄位。
-/// 空：顯示「新遊戲」；有資料：顯示「繼續 + 存檔時間」與「刪除」(按兩次才刪)。
+/// 標題畫面的一個按鈕。索引 0 = 新的存檔 (已有存檔時要按兩次確認)、1 = save1、2 = save2 (沒有存檔時不能按)。
 /// </summary>
 public class TitleSlotUI : MonoBehaviour
 {
     [SerializeField] Button playButton;
     [SerializeField] Text playLabel;
-    [SerializeField] Button deleteButton;
-    [SerializeField] Text deleteLabel;
 
     TitleMenu menu;
-    int slot;
-    bool confirmingDelete;
+    int index;
+    bool confirming;
 
-    public void Init(TitleMenu menu, int slot)
+    public void Init(TitleMenu menu, int index)
     {
         this.menu = menu;
-        this.slot = slot;
-        playButton.onClick.AddListener(() => menu.Play(slot));
-        deleteButton.onClick.AddListener(OnDelete);
+        this.index = index;
+        playButton.onClick.AddListener(OnClick);
         Refresh();
     }
+
+    int Slot => index == 1 ? SaveSystem.Save1 : SaveSystem.Save2;
 
     void Refresh()
     {
-        var data = SaveSystem.Load(slot);
-        bool has = data != null;
-        playLabel.text = has
-            ? $"欄位 {slot + 1}  繼續{(data.loop >= 2 ? "  (二周目)" : "")}\n<size=20>{data.lastSaveTime}</size>"
-            : $"欄位 {slot + 1}  新遊戲";
-        deleteButton.gameObject.SetActive(has);
-        confirmingDelete = false;
-        deleteLabel.text = "刪除";
-    }
-
-    void OnDelete()
-    {
-        if (!confirmingDelete)
+        if (index == 0)
         {
-            confirmingDelete = true;
-            deleteLabel.text = "確定？";
+            playLabel.text = confirming ? "新的存檔\n<size=20>會清除 save1、save2，再按一次確定</size>" : "新的存檔";
             return;
         }
-        SaveSystem.Delete(slot);
-        Refresh();
+        var data = SaveSystem.Load(Slot);
+        playButton.interactable = data != null;
+        string name = index == 1 ? "save1  (一周目)" : "save2  (二周目)";
+        playLabel.text = data != null ? $"{name}\n<size=20>{data.lastSaveTime}</size>" : $"{name}\n<size=20>---</size>";
+    }
+
+    void OnClick()
+    {
+        if (index != 0)
+        {
+            menu.Play(Slot);
+            return;
+        }
+        if (SaveSystem.HasSave(SaveSystem.Save1) && !confirming)
+        {
+            confirming = true;
+            Refresh();
+            return;
+        }
+        menu.NewGame();
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 一張地圖 (區域) 的範圍。bounds 是一個 isTrigger 的 Collider2D (通常是 PolygonCollider2D)，
 /// 同時當作鏡頭的活動範圍 (CameraAreaFollower 會自動切換) 與地圖 UI 的世界範圍。
-/// 也是「區段」：二周目的「請輸入文本」每個區域各能用一次。
+/// 也是「房間」：進入房間就自動存檔，順序 = x 座標 (room1, room2...，見 GameManager.Rooms)；二周目的 transform 每個房間各能用一次。
 /// </summary>
 public class MapArea : MonoBehaviour
 {

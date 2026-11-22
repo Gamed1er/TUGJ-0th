@@ -3,19 +3,19 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
-/// 物品欄的一格。左鍵點擊 = 選取；拖曳到另一格 = 交換位置。
-/// 美術換圖：直接改 InventorySlot.prefab 裡的 Image。
+/// 物品欄的一格 (工作列上)。左鍵點擊 = 選取；拖曳到另一格 = 交換位置。
+/// 選中時顯示 selectedFrame (UI_select 框)。keyText、background 可以不接。
 /// </summary>
 public class InventorySlotUI : MonoBehaviour,
     IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler, IDropHandler
 {
     [SerializeField] Image icon;
     [SerializeField] Text usesText;
-    [Tooltip("道具不能用 (次數歸 0、請輸入文本在這個區段用過) 時套用的黑白材質")]
+    [Tooltip("道具不能用 (次數歸 0) 時套用的黑白材質")]
     [SerializeField] Material grayscaleMaterial;
     [SerializeField] Text keyText;
     [SerializeField] GameObject selectedFrame;
-    [Tooltip("格子底色。無人機道具在場上有有電的無人機時變成 droneActiveColor")]
+    [Tooltip("格子上的色塊 (平常透明)。無人機道具在場上有有電的無人機時變成 droneActiveColor")]
     [SerializeField] Image background;
     [SerializeField] Color droneActiveColor = new Color(0.1f, 0.55f, 0.65f, 0.9f);
 
@@ -31,14 +31,14 @@ public class InventorySlotUI : MonoBehaviour,
     {
         this.owner = owner;
         this.index = index;
-        keyText.text = (index + 1).ToString();
+        if (keyText != null) keyText.text = (index + 1).ToString();
         rootCanvas = GetComponentInParent<Canvas>().rootCanvas;
         if (background != null) normalBackground = background.color;
     }
 
     void Update()
     {
-        // 能不能用可能隨時間改變 (例如請輸入文本換了區段)，所以每幀更新
+        // 能不能用可能隨時間改變，所以每幀更新
         if (item != null) icon.material = item.definition.IsAvailable(item) ? null : grayscaleMaterial;
 
         if (background == null) return;
