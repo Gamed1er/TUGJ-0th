@@ -83,8 +83,8 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 4
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 7f0da0779cb6f8f4aa9e156aaff0b94f, type: 3}
-  m_Color: {r: 0.3, g: 0.45, b: 0.75, a: 1}
+  m_Sprite: {fileID: 21300000, guid: 6da84f87b4b860343a9249615e6da20c, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -131,13 +131,13 @@ BoxCollider2D:
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
+    oldSize: {x: 0.375, y: 4}
     newSize: {x: 1, y: 1}
     adaptiveTilingThreshold: 0.5
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.375, y: 4}
   m_EdgeRadius: 0
 --- !u!114 &6797691799182169848
 MonoBehaviour:
@@ -153,5 +153,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Door
   solid: {fileID: 8296070238830701425}
   visual: {fileID: 6278302894706261435}
-  openAlpha: 0.2
   startOpen: 0
+  horizontal: 0
+  frames:
+  - {fileID: 21300000, guid: 6da84f87b4b860343a9249615e6da20c, type: 3}
+  - {fileID: 21300000, guid: 87aee86b82ff1d047acd47b772df5193, type: 3}
+  - {fileID: 21300000, guid: f286d55f4bc9c6244b32e9333fb0b43e, type: 3}
+  - {fileID: 21300000, guid: 5506e5805425f8d428cc89b57c8c41a3, type: 3}
+  - {fileID: 21300000, guid: abe2a1d77c2c5054ba96df4698e3a3ec, type: 3}
+  - {fileID: 21300000, guid: 05c46a1aa91c96946ac0d456470233f0, type: 3}
+  - {fileID: 21300000, guid: 4fe75f7d4188b724382a1ae428cdaa79, type: 3}
+  - {fileID: 21300000, guid: fcb9ad891aefa9f41bc3018f2aaaa684, type: 3}
+  - {fileID: 21300000, guid: 0ebba6470aac770428c7dc1a17afc113, type: 3}
+  lyingFrames:
+  - {fileID: 21300000, guid: 7504ca2267e757444b8f74a0dcfd3272, type: 3}
+  - {fileID: 21300000, guid: 8355ccb184fa7104086bc4447e7851cb, type: 3}
+  - {fileID: 21300000, guid: 3e861fdf3cdfd8e4ba0d8ec8e7958dbd, type: 3}
+  - {fileID: 21300000, guid: 706ad8f50d7d4cd4891a0fbcf1ffce64, type: 3}
+  - {fileID: 21300000, guid: 57188e03d099e174195220fe611187f8, type: 3}
+  - {fileID: 21300000, guid: 389e6d211e33ded47abb7e2be0671798, type: 3}
+  - {fileID: 21300000, guid: 4c9243bcc14cc2846932e6597bddda35, type: 3}
+  - {fileID: 21300000, guid: 4472fb7e7a601dc49b3e339d39ce169f, type: 3}
+  - {fileID: 21300000, guid: 39666a97cb4b84b40b429480190980a2, type: 3}
+  frameRate: 18
+  thickness: 0.375
