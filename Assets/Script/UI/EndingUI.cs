@@ -9,8 +9,8 @@ using UnityEngine.UI;
 /// 二周目通關 (在通關點按 E，GameManager.EndingRoutine 呼叫)：
 /// 1. PlayStory：全螢幕 CG + 字幕 (底部黑色漸層 + 白字，不用對話框) 播結局劇情。劇本一行一句，單獨一行 "cg_3" = 換成 CG3 那張圖；
 ///    CG 底下沒有句子 (例如最後的 cg_11) = 只顯示圖、按一下鍵繼續；"【end】" = 劇本結束。
-/// 2. Play：全螢幕播 end 動畫一次，停在最後一格後顯示閃爍的「Press any key」，按任意鍵 / 點擊 → 結束 (GameManager 回標題)。
-/// root 平常關著；anim 是 root 底下的 UIFrameAnimation (loop 不勾)；cgImage 是 root 底下的全螢幕 Image。
+/// 2. Play：全螢幕循環播 end 動畫 (跟標題一樣一直播)，播完第一輪後顯示閃爍的「Press any key」，按任意鍵 / 點擊 → 結束 (GameManager 回標題)。
+/// root 平常關著；anim 是 root 底下的 UIFrameAnimation (勾 loop)；cgImage 是 root 底下的全螢幕 Image。
 /// </summary>
 public class EndingUI : MonoBehaviour
 {
@@ -53,7 +53,7 @@ public class EndingUI : MonoBehaviour
         }
     }
 
-    /// <summary>顯示並播放 end 動畫，等玩家按鍵後結束。</summary>
+    /// <summary>顯示並循環播放 end 動畫，第一輪播完後等玩家按鍵結束。</summary>
     public IEnumerator Play()
     {
         root.SetActive(true);
@@ -61,7 +61,7 @@ public class EndingUI : MonoBehaviour
         anim.gameObject.SetActive(true);
         pressAnyKey.SetActive(false);
         anim.Restart();
-        while (!anim.Finished) yield return null;
+        for (float t = 0f; t < anim.Duration; t += Time.unscaledDeltaTime) yield return null;
 
         for (float t = 0f; ; t += Time.unscaledDeltaTime)
         {

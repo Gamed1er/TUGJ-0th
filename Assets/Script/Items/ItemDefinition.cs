@@ -26,6 +26,9 @@ public abstract class ItemDefinition : ScriptableObject
     /// <summary>物品欄要不要顯示次數。</summary>
     public virtual bool ShowUses => true;
 
+    /// <summary>true = 固定在格子裡，不能拖曳、也不能被別的道具換進來 (例如電腦)。</summary>
+    public virtual bool Pinned => false;
+
     /// <summary>目前能不能用 (false = 物品欄圖示變黑白)。預設 = 還有次數。</summary>
     public virtual bool IsAvailable(ItemInstance item) => item.uses > 0;
 
