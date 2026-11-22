@@ -24,7 +24,7 @@ public class SaveData
     /// <summary>第幾周目 (1 或 2)。</summary>
     public int loop = 1;
 
-    /// <summary>一周目通關當下，玩家生成的電池位置 (二周目 transform 用)。屬於哪個房間由位置判斷 (MapArea.Find)。</summary>
+    /// <summary>二周目 transform 用的電池位置 (= 一周目進最後房間時快照累積的 RoomSnapshot.batteries)。屬於哪個房間由位置判斷 (MapArea.Contains)。</summary>
     public List<Vector2> batteryRecords = new List<Vector2>();
 
     /// <summary>最後存檔時間，給標題畫面顯示。</summary>
@@ -59,6 +59,12 @@ public class RoomSnapshot
 
     /// <summary>二周目：已經用過 transform 的房間 (MapArea.Id)。</summary>
     public List<string> recallUsedAreas = new List<string>();
+
+    /// <summary>
+    /// 一周目：進這個房間之前，前面房間累積的電池紀錄 (玩家生成的電池位置)。
+    /// 離開房間 (經過 MapEdge) 時 = 上個房間快照的紀錄 + 剛離開的房間裡現有的玩家電池。死亡重載不會掉。
+    /// </summary>
+    public List<Vector2> batteries = new List<Vector2>();
 
     /// <summary>二周目最後的房間 (room 6)：進來那一刻五個 [Target] 機關是否觸發中 (順序 = TrueEndGate 的順序)。</summary>
     public List<bool> targetResults = new List<bool>();
