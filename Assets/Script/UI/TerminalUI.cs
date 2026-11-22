@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 終端機 (取代舊的 M 地圖)。M 鍵或點工作列的終端機圖示開關；開著時遊戲暫停、玩家不能操作。
+/// 終端機 (取代舊的 M 地圖)。M 鍵、Esc 或點工作列的終端機圖示打開 (開著時 Esc = 返回 / 關閉)；開著時遊戲暫停、玩家不能操作。
 /// 操作：滑鼠移上去選取、點擊執行；或 WASD / 方向鍵選、Enter 執行、Esc 返回 / 關閉。
 ///
 /// 主頁 (左右兩半)：
@@ -74,7 +74,11 @@ public class TerminalUI : MonoBehaviour
     void Update()
     {
         if (GameInput.MapPressed) { Toggle(); return; }
-        if (!IsOpen) return;
+        if (!IsOpen)
+        {
+            if (GameInput.CancelPressed) SetOpen(true); // Esc 也能打開 (開著時 Esc = 返回 / 關閉)
+            return;
+        }
 
         if (GameInput.CancelPressed)
         {

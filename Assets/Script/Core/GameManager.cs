@@ -12,7 +12,7 @@ using UnityEngine.Tilemaps;
 /// - 自動存檔：每進入一個房間 (MapArea，經過 MapEdge 轉場) 就存檔 (EnterRoom)；讀檔 = 終端機點房間 (RewindTo)
 /// - 死亡 → 淡出 → 重新載入場景 (= 回到目前房間的快照)；R 鍵 (RestartAtNode) 也一樣
 /// - 通關 (ClearGame)：一周目 → 記錄電池位置、建立 save2、從頭開始二周目；二周目 → 播 end 動畫 → 回標題
-/// - 最後的房間 (room 6，FinalRoom)：一周目進來 = 通關 (播 clearLoop1)；二周目進來 = 結算 [Target] 條件 (TrueEndGate)，
+/// - 最後的房間 (room 6，FinalRoom)：一周目進來再往右走 loop1ClearDistance 格 = 通關 (播 clearLoop1)；二周目進來 = 結算 [Target] 條件 (TrueEndGate)，
 ///   全部達成 → 開門 (門後的 ClearGoal = 真結局，暫時跟 BE 一樣)，沒達成 → 直接播 BE
 /// - 二周目 transform (終端機右半邊)：在目前房間生成一周目記錄的電池，每個房間一次，使用紀錄跟著快照存
 /// 其他腳本透過 GameManager.Instance 呼叫。
@@ -52,9 +52,13 @@ public class GameManager : MonoBehaviour
     public DialogueUI dialogue;
     [Tooltip("一周目開頭的劇情，一行 = 一句。只在新遊戲第一次進場時播，讀檔 / 死亡重載不播")]
     [TextArea(3, 15)] public string introLoop1;
-    [Tooltip("一周目通關 (在通關點按 E) 時播的劇情，一行 = 一句。播完才進二周目 (二周目開頭沒有劇情)")]
+    [Tooltip("一周目通關 (進最後的房間後再往前走 loop1ClearDistance 格) 時播的劇情，一行 = 一句。播完才進二周目")]
     [UnityEngine.Serialization.FormerlySerializedAs("introLoop2")]
     [TextArea(3, 15)] public string clearLoop1;
+    [Tooltip("二周目開頭 (新的 save2 第一次進場) 播的系統訊息，一行 = 一句。讀檔 / 死亡重載不播")]
+    [TextArea(2, 10)] public string startLoop2 = "【系統】終端已解鎖新功能，打開即可查看";
+    [Tooltip("一周目：進最後的房間後，玩家要再往右走幾格才播 clearLoop1 並進二周目 (從進房間的落點算)")]
+    public float loop1ClearDistance = 5f;
     [Tooltip("淡入完成後等幾秒才開始對話")]
     public float introDelay = 0.6f;
     [Tooltip("二周目通關後的結局劇情 (播完才播 end 動畫)。一行 = 一句；單獨一行 cg_3 = 換成 CG3 的圖 (圖拖在 EndingUI.cgSprites)；cg 底下沒有句子 = 只看圖按一下繼續；【end】= 結束")]
@@ -76,7 +80,7 @@ public class GameManager : MonoBehaviour
     /// <summary>所有房間，依 x 座標由左到右 (= room1, room2...)。</summary>
     public IReadOnlyList<MapArea> Rooms => rooms;
     public string CurrentRoomId => data.currentRoomId;
-    /// <summary>最後的房間 (最右邊 = room 6)：一周目進來就通關，二周目進來結算真結局條件。</summary>
+    /// <summary>最後的房間 (最右邊 = room 6)：一周目進來往前走一段就通關，二周目進來結算真結局條件。</summary>
     public MapArea FinalRoom => rooms.Count > 0 ? rooms[rooms.Count - 1] : null;
     public Inventory Inventory { get; private set; }
     /// <summary>第幾周目 (1 / 2)。</summary>
@@ -143,7 +147,7 @@ public class GameManager : MonoBehaviour
             recallUsedAreas.Clear();
             var area = MapArea.Find(playerStart.position);
             if (area != null) EnterRoom(area, playerStart.position, silent: true);
-            if (data.loop < 2) StartCoroutine(IntroRoutine(introLoop1)); // 二周目開頭沒有劇情 (一周目通關時已經播過 clearLoop1)
+            StartCoroutine(IntroRoutine(data.loop < 2 ? introLoop1 : startLoop2)); // 二周目開頭 = 系統訊息 (劇情在一周目通關時已經播過 clearLoop1)
         }
         else
         {
@@ -210,14 +214,14 @@ public class GameManager : MonoBehaviour
     /// 進入房間 (轉場落地後呼叫)。往前推進 (或這個房間還沒有快照) → 覆蓋快照、刪掉後面房間的快照 (新的時間線)；
     /// 往回走 → 只把重生房間改成這裡。
     /// </summary>
-    /// from = 剛離開的房間 (轉場前玩家所在)，一周目會把那裡的玩家電池累計進新房間快照的 batteries。
-    void EnterRoom(MapArea room, Vector2 spawn, bool silent = false, MapArea from = null)
+    /// leftBatteries = 剛離開的房間裡的玩家電池位置 (轉場開始時抓的，PlayerBatteriesIn)，一周目累計進新房間快照的 batteries。
+    void EnterRoom(MapArea room, Vector2 spawn, bool silent = false, List<Vector2> leftBatteries = null)
     {
         if (room == null || room.Id == data.currentRoomId) return;
         if (!data.discoveredRooms.Contains(room.Id)) data.discoveredRooms.Add(room.Id);
 
         bool forward = RoomIndex(room.Id) > RoomIndex(data.currentRoomId) || !HasSnapshot(room);
-        var batteries = forward ? AccumulateBatteries(from) : null; // 要在 currentRoomId 改掉之前讀上個房間的快照
+        var batteries = forward ? AccumulateBatteries(leftBatteries) : null; // 要在 currentRoomId 改掉之前讀上個房間的快照
         data.currentRoomId = room.Id;
         if (forward)
         {
@@ -231,19 +235,24 @@ public class GameManager : MonoBehaviour
         StateChanged?.Invoke();
     }
 
-    /// <summary>
-    /// 一周目電池紀錄：目前房間快照的累積紀錄 + from 房間裡現有的玩家電池 (SpawnedByPlayer，吊著的也算)。
-    /// 二周目不累計 (回傳空的)。
-    /// </summary>
-    List<Vector2> AccumulateBatteries(MapArea from)
+    /// <summary>一周目電池紀錄：目前房間快照的累積紀錄 + 剛離開的房間的電池。二周目不累計 (回傳空的)。</summary>
+    List<Vector2> AccumulateBatteries(List<Vector2> leftBatteries)
     {
         var list = new List<Vector2>();
         if (data.loop >= 2) return list;
         var current = data.FindSnapshot(data.currentRoomId);
         if (current != null) list.AddRange(current.batteries);
-        if (from != null)
-            foreach (var b in Battery.All)
-                if (b.SpawnedByPlayer && from.Contains(b.Body.position)) list.Add(b.Body.position);
+        if (leftBatteries != null) list.AddRange(leftBatteries);
+        return list;
+    }
+
+    /// <summary>room 裡現有的玩家電池位置 (SpawnedByPlayer，無人機吊著的也算)。要在無人機被移除前呼叫，否則吊著的電池會先掉下去。</summary>
+    static List<Vector2> PlayerBatteriesIn(MapArea room)
+    {
+        var list = new List<Vector2>();
+        if (room == null) return list;
+        foreach (var b in Battery.All)
+            if (b.SpawnedByPlayer && room.Contains(b.Body.position)) list.Add(b.Body.position);
         return list;
     }
 
@@ -391,15 +400,16 @@ public class GameManager : MonoBehaviour
     IEnumerator TransitionRoutine(Vector2 position)
     {
         transitioning = true;
+        // 電池紀錄：在無人機消失 (吊著的電池被放開、往下掉) 之前先抓位置
+        var leftBatteries = PlayerBatteriesIn(PlayerRoom);
         Drone.RemoveAll(); // 切換地圖：所有無人機消失
         GameInput.Locked = true;
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();
 
-        var from = PlayerRoom; // 剛離開的房間 (電池紀錄用)
         player.Teleport(position);
         var room = MapArea.Find(position);
-        EnterRoom(room, position, from: from);
+        EnterRoom(room, position, leftBatteries: leftBatteries);
         bool final = room != null && room == FinalRoom;
         if (final) RecordTargets(room);
         yield return null; // 讓 CameraAreaFollower 切換鏡頭範圍並定位
@@ -424,11 +434,19 @@ public class GameManager : MonoBehaviour
         trueEndGate.ApplyRecord(results);
     }
 
-    /// <summary>到達最後的房間：一周目 = 通關 (clearLoop1 → 二周目)；二周目條件沒達成 = 播 BE。達成的話門已經開了，門後的 ClearGoal 才是真結局。</summary>
+    /// <summary>到達最後的房間：一周目 = 往右走 loop1ClearDistance 格後通關 (clearLoop1 → 二周目)；二周目條件沒達成 = 播 BE。達成的話門已經開了，門後的 ClearGoal 才是真結局。</summary>
     void ArriveFinalRoom()
     {
-        if (data.loop < 2) ClearGame();
+        if (data.loop < 2) StartCoroutine(Loop1ClearAfterWalk());
         else if (trueEndGate == null || !trueEndGate.AllRecorded) ClearGame(); // 二周目的 ClearGame = BE (真結局還沒做，暫時共用)
+    }
+
+    /// <summary>一周目最後的房間：等玩家從現在的位置往右走 loop1ClearDistance 格 → 通關。死亡重載會重新等。</summary>
+    IEnumerator Loop1ClearAfterWalk()
+    {
+        float targetX = player.Body.position.x + loop1ClearDistance;
+        yield return new WaitUntil(() => !Busy && player.Body.position.x >= targetX);
+        ClearGame();
     }
 
     IEnumerator ArriveFinalRoomAfterFade()
