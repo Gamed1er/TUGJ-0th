@@ -48,8 +48,9 @@ public class GameManager : MonoBehaviour
     public DialogueUI dialogue;
     [Tooltip("一周目開頭的劇情，一行 = 一句。只在新遊戲第一次進場時播，讀檔 / 死亡重載不播")]
     [TextArea(3, 15)] public string introLoop1;
-    [Tooltip("二周目開頭的劇情，一行 = 一句")]
-    [TextArea(3, 15)] public string introLoop2;
+    [Tooltip("一周目通關 (在通關點按 E) 時播的劇情，一行 = 一句。播完才進二周目 (二周目開頭沒有劇情)")]
+    [UnityEngine.Serialization.FormerlySerializedAs("introLoop2")]
+    [TextArea(3, 15)] public string clearLoop1;
     [Tooltip("淡入完成後等幾秒才開始對話")]
     public float introDelay = 0.6f;
     [Tooltip("二周目通關後的結局劇情 (播完才播 end 動畫)。一行 = 一句；單獨一行 cg_3 = 換成 CG3 的圖 (圖拖在 EndingUI.cgSprites)；cg 底下沒有句子 = 只看圖按一下繼續；【end】= 結束")]
@@ -136,7 +137,7 @@ public class GameManager : MonoBehaviour
             recallUsedAreas.Clear();
             var area = MapArea.Find(playerStart.position);
             if (area != null) EnterRoom(area, playerStart.position, silent: true);
-            StartCoroutine(IntroRoutine(data.loop >= 2 ? introLoop2 : introLoop1));
+            if (data.loop < 2) StartCoroutine(IntroRoutine(introLoop1)); // 二周目開頭沒有劇情 (一周目通關時已經播過 clearLoop1)
         }
         else
         {
@@ -159,13 +160,11 @@ public class GameManager : MonoBehaviour
 
     void Save() => SaveSystem.Save(SaveSystem.CurrentSlot, data);
 
-    /// <summary>周目開頭的劇情：等淡入完 → 鎖住玩家輸入 (世界照跑) → 播對話 → 解鎖。</summary>
+    /// <summary>一周目開頭的劇情：等淡入完 → 鎖住玩家輸入 (世界照跑) → 播對話 → 解鎖。</summary>
     IEnumerator IntroRoutine(string text)
     {
         if (dialogue == null || string.IsNullOrWhiteSpace(text)) yield break;
-        var lines = new List<string>();
-        foreach (var line in text.Split('\n'))
-            if (line.Trim().Length > 0) lines.Add(line.Trim());
+        var lines = SplitLines(text);
 
         talking = true;
         GameInput.Locked = true;
@@ -173,6 +172,15 @@ public class GameManager : MonoBehaviour
         yield return dialogue.Play(lines);
         GameInput.Locked = false; // 協程在 Update 之後才跑，最後一下按鍵不會在同一幀被當成跳躍 / 互動
         talking = false;
+    }
+
+    /// <summary>劇情文本 → 一行一句 (去掉空行)。</summary>
+    static List<string> SplitLines(string text)
+    {
+        var lines = new List<string>();
+        foreach (var line in text.Split('\n'))
+            if (line.Trim().Length > 0) lines.Add(line.Trim());
+        return lines;
     }
 
     // ---------- 房間 (自動存檔) ----------
@@ -280,9 +288,20 @@ public class GameManager : MonoBehaviour
         SaveSystem.Save(SaveSystem.Save2, next);
         SaveSystem.CurrentSlot = SaveSystem.Save2;
 
+        transitioning = true; // 播劇情期間不會死亡、不能開終端機
+        StartCoroutine(ClearLoop1Routine());
+    }
+
+    /// <summary>一周目通關：原地播 clearLoop1 (玩家停住、輸入鎖住) → 重新載入場景進二周目。</summary>
+    IEnumerator ClearLoop1Routine()
+    {
+        Drone.RemoveAll();
+        GameInput.Locked = true;
+        player.SetFrozen(true);
+        if (dialogue != null && !string.IsNullOrWhiteSpace(clearLoop1))
+            yield return dialogue.Play(SplitLines(clearLoop1));
         ToastUI.Show("一周目通關");
-        transitioning = true;
-        StartCoroutine(LoadSceneRoutine(SceneManager.GetActiveScene().name));
+        yield return LoadSceneRoutine(SceneManager.GetActiveScene().name);
     }
 
     IEnumerator EndingRoutine()
