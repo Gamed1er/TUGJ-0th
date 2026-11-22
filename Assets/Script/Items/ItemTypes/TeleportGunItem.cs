@@ -23,6 +23,8 @@ public class TeleportGunItem : ItemDefinition
 
         Instantiate(bulletPrefab, ctx.player.Body.position, Quaternion.identity).Launch(ctx.AimDirection);
         ctx.Consume();
+        var anim = ctx.player.GetComponent<PlayerAnimator>();
+        if (anim != null) anim.PlayShot(); // 射擊動畫
     }
 
     /// <summary>提示線：沒有子彈在飛時，模擬子彈軌跡 (含黑洞拉力)。會打到電池 → 綠色。</summary>

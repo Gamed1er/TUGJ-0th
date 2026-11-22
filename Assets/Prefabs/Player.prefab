@@ -5342,6 +5342,51 @@ MonoBehaviour:
   - {fileID: -4845626741048118468, guid: c9de114dcce33a84c9b3939018f9346d, type: 3}
   jumpSpeedRange: 8
   airDelay: 0.06
+  teleportDraw:
+  - {fileID: -1581319818, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -140153724, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -152050161, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -980884634, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: 1678001738, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -989286892, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -306627939, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -650994788, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  - {fileID: -1970128023, guid: 7d3bfb812ced3e445b27e7f6e6488556, type: 3}
+  teleportShot:
+  - {fileID: 1260128421, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
+  - {fileID: 1059672782, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
+  - {fileID: -393889962, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
+  - {fileID: 27734006, guid: 2b17c9429c3f3054b8be40bc43da9456, type: 3}
+  blackHoleDraw:
+  - {fileID: -1570805081, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: -1804548324, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: 2135518436, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: -418753358, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: -1714209255, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: -377093441, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: -1672642827, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: 419962733, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  - {fileID: 907561434, guid: 572ae34a0721c2d46baed71054d5a499, type: 3}
+  blackHoleShot:
+  - {fileID: 102756176, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
+  - {fileID: 223310724, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
+  - {fileID: -1715525909, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
+  - {fileID: -1858810708, guid: bb726f59fb2d049429a02bf076c307c4, type: 3}
+  drawFps: 18
+  shotFps: 16
+  padTake:
+  - {fileID: 1349463710, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  - {fileID: -607213031, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  - {fileID: -714253499, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  - {fileID: -1194833274, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  - {fileID: -1789269188, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  - {fileID: -1235588498, guid: a746538f772caf048bd9416a075a64a5, type: 3}
+  padUsing:
+  - {fileID: -837714468, guid: 693d2ae35e4bd7d49952685d66f32edf, type: 3}
+  - {fileID: -1792316483, guid: 693d2ae35e4bd7d49952685d66f32edf, type: 3}
+  - {fileID: 2094386862, guid: 693d2ae35e4bd7d49952685d66f32edf, type: 3}
+  - {fileID: -1505106055, guid: 693d2ae35e4bd7d49952685d66f32edf, type: 3}
+  padFps: 12
   landFx: {fileID: 4087009329842214456, guid: ffe7dc44e1842b64580b4406803c79d0, type: 3}
   landFxMinAirTime: 0.25
   walkFx: {fileID: 4087009329842214456, guid: 0ba93a16deeb4634d9a99cada418f7eb, type: 3}
