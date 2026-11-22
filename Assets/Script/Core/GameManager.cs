@@ -210,22 +210,41 @@ public class GameManager : MonoBehaviour
     /// 進入房間 (轉場落地後呼叫)。往前推進 (或這個房間還沒有快照) → 覆蓋快照、刪掉後面房間的快照 (新的時間線)；
     /// 往回走 → 只把重生房間改成這裡。
     /// </summary>
-    void EnterRoom(MapArea room, Vector2 spawn, bool silent = false)
+    /// from = 剛離開的房間 (轉場前玩家所在)，一周目會把那裡的玩家電池累計進新房間快照的 batteries。
+    void EnterRoom(MapArea room, Vector2 spawn, bool silent = false, MapArea from = null)
     {
         if (room == null || room.Id == data.currentRoomId) return;
         if (!data.discoveredRooms.Contains(room.Id)) data.discoveredRooms.Add(room.Id);
 
         bool forward = RoomIndex(room.Id) > RoomIndex(data.currentRoomId) || !HasSnapshot(room);
+        var batteries = forward ? AccumulateBatteries(from) : null; // 要在 currentRoomId 改掉之前讀上個房間的快照
         data.currentRoomId = room.Id;
         if (forward)
         {
             WriteSnapshot(room.Id, spawn);
+            data.FindSnapshot(room.Id).batteries = batteries;
             int order = RoomIndex(room.Id);
             data.snapshots.RemoveAll(s => RoomIndex(s.roomId) > order);
         }
         Save();
         if (forward && !silent) ToastUI.Show("已存檔");
         StateChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// 一周目電池紀錄：目前房間快照的累積紀錄 + from 房間裡現有的玩家電池 (SpawnedByPlayer，吊著的也算)。
+    /// 二周目不累計 (回傳空的)。
+    /// </summary>
+    List<Vector2> AccumulateBatteries(MapArea from)
+    {
+        var list = new List<Vector2>();
+        if (data.loop >= 2) return list;
+        var current = data.FindSnapshot(data.currentRoomId);
+        if (current != null) list.AddRange(current.batteries);
+        if (from != null)
+            foreach (var b in Battery.All)
+                if (b.SpawnedByPlayer && from.Contains(b.Body.position)) list.Add(b.Body.position);
+        return list;
     }
 
     /// <summary>可以從終端機讀這個房間嗎 (有快照)。</summary>
@@ -295,8 +314,9 @@ public class GameManager : MonoBehaviour
 
         Save(); // save1 留著
         var next = new SaveData { loop = 2 };
-        foreach (var b in Battery.All)
-            if (b.SpawnedByPlayer) next.batteryRecords.Add(b.Body.position);
+        // 電池紀錄 = 進最後房間時快照累積的 (前面每個房間離開時記下的)，死亡重載過也不會掉
+        var snapshot = data.FindSnapshot(data.currentRoomId);
+        if (snapshot != null) next.batteryRecords.AddRange(snapshot.batteries);
         SaveSystem.Save(SaveSystem.Save2, next);
         SaveSystem.CurrentSlot = SaveSystem.Save2;
 
@@ -376,9 +396,10 @@ public class GameManager : MonoBehaviour
         player.SetFrozen(true);
         if (fader != null) yield return fader.FadeOut();
 
+        var from = PlayerRoom; // 剛離開的房間 (電池紀錄用)
         player.Teleport(position);
         var room = MapArea.Find(position);
-        EnterRoom(room, position);
+        EnterRoom(room, position, from: from);
         bool final = room != null && room == FinalRoom;
         if (final) RecordTargets(room);
         yield return null; // 讓 CameraAreaFollower 切換鏡頭範圍並定位
