@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Cinemachine;
@@ -90,7 +90,7 @@ public class GameManager : MonoBehaviour
     /// <summary>目前這條時間線上已經用過 transform 的房間 (跟物品欄一起存進房間快照)。</summary>
     readonly HashSet<string> recallUsedAreas = new HashSet<string>();
     static readonly Collider2D[] overlap = new Collider2D[1];
-    SaveData data;
+    public SaveData data;
     bool dying;
     bool transitioning;
     bool talking;
@@ -423,12 +423,32 @@ public class GameManager : MonoBehaviour
         Save();
         trueEndGate.ApplyRecord(results);
     }
-
+    public Door finalDoor;
+    [SerializeField] TMPro.TextMeshProUGUI finalText;
+    [SerializeField] GameObject[] lights;
     /// <summary>到達最後的房間：一周目 = 通關 (clearLoop1 → 二周目)；二周目條件沒達成 = 播 BE。達成的話門已經開了，門後的 ClearGoal 才是真結局。</summary>
     void ArriveFinalRoom()
     {
-        if (data.loop < 2) ClearGame();
-        else if (trueEndGate == null || !trueEndGate.AllRecorded) ClearGame(); // 二周目的 ClearGame = BE (真結局還沒做，暫時共用)
+        int trigger_true_count = 0;
+        for (int i = 0; i < trueEndGate.TargetCount; i++)
+        {
+            bool target = trueEndGate.IsTriggeredNow(i);
+            if (target == true)
+            {
+                trigger_true_count++;
+                lights[i].SetActive(true);
+
+            }
+            else
+            {
+                lights[i].SetActive(false);
+
+            }
+        }
+        if (trigger_true_count == 5) finalDoor.SetPressed(null, true);
+        else finalDoor.SetPressed(null, false);
+
+        if (data.loop < 2) { return; }
     }
 
     IEnumerator ArriveFinalRoomAfterFade()

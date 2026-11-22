@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
@@ -40,7 +40,7 @@ public class PlayerItemUser : MonoBehaviour
 
         // 選中的道具換了 (切格、拖曳) 或放開右鍵 → 結束上一次的使用
         if (held != null && (held != inventory.SelectedItem || !GameInput.UseHeld)) EndHold();
-
+        //print(IsPointerOverUI());
         if (GameInput.UsePressed && !IsPointerOverUI())
         {
             if (BlackHole.Current != null && BlackHole.Current.IsFlying)

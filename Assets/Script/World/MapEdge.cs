@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
 /// 地圖邊界的轉場觸發區。玩家碰到 → 黑畫面 → 移動到 target 的入口，並保持相對高度。
@@ -13,12 +13,14 @@ public class MapEdge : MonoBehaviour
     [SerializeField] MapEdge target;
     [Tooltip("從別張地圖進入這裡時，玩家出現的位置 (相對於此物件)。要放在觸發區外面，避免一進來又被傳走")]
     [SerializeField] Vector2 entryOffset = new Vector2(1.5f, 0f);
+    [SerializeField] bool isfinalEdge = false; // 終端機用
+    [SerializeField] bool isfinalEdge_1loop = false; // 終端機用
 
     public Vector2 EntryPoint => (Vector2)transform.position + entryOffset;
 
     void Awake()
     {
-        if (target != null) return;
+        if (target != null||isfinalEdge||isfinalEdge_1loop) return;
         // 沒有目的地 = 牆
         GetComponent<Collider2D>().isTrigger = false;
         gameObject.layer = LayerMask.NameToLayer("Ground");
@@ -26,10 +28,19 @@ public class MapEdge : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (target == null) return;
+        if (target == null && !isfinalEdge && !isfinalEdge_1loop) return;
         var player = other.GetComponent<PlayerController>();
         if (player == null) return;
-
+        if(GameManager.Instance.data.loop<2 && isfinalEdge_1loop)
+        {
+            GameManager.Instance.ClearGame();
+            return;
+        }
+        if (isfinalEdge)
+        {
+            GameManager.Instance.ClearGame();
+            return;
+        }  
         float relativeY = player.transform.position.y - transform.position.y;
         GameManager.Instance.TransitionTo(target.EntryPoint + Vector2.up * relativeY);
     }
