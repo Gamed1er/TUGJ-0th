@@ -19,6 +19,9 @@ public class PressurePlate : MonoBehaviour
     readonly HashSet<Collider2D> inside = new HashSet<Collider2D>();
     bool pressed;
 
+    /// <summary>目前是不是被壓著 (TrueEndGate 檢查條件用)。</summary>
+    public bool Pressed => pressed;
+
     void Start() => Refresh(force: true);
 
     // 無人機會在範圍內「沒電」，所以每幀重新判斷

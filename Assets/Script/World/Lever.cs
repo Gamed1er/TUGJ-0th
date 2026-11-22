@@ -21,6 +21,9 @@ public class Lever : MonoBehaviour, IInteractable
 
     bool on;
 
+    /// <summary>目前是不是拉開的狀態 (TrueEndGate 檢查條件用)。</summary>
+    public bool On => on;
+
     public Vector3 PromptPosition => transform.position + Vector3.up * 1.5f;
 
     public string GetPrompt(PlayerInteractor who) => "E 拉桿";

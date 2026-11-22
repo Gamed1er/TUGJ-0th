@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// 開發用快捷鍵，只在編輯器與 Development Build 生效 (正式版自動失效)。
-/// F1 補滿所有道具 / F2 清除所有存檔 / F3 瞬移到下一個房間 / F4 無敵 / F5 自殺 / F6 回標題 / F12 顯示說明
+/// F1 無限道具開關 / F2 清除所有存檔 / F3 瞬移到下一個房間 / F4 無敵 / F5 自殺 / F6 回標題 / F12 顯示說明
 /// </summary>
 public class DebugTools : MonoBehaviour
 {
@@ -19,12 +19,9 @@ public class DebugTools : MonoBehaviour
 
         if (kb.f1Key.wasPressedThisFrame)
         {
-            foreach (var def in ItemRegistry.All)
-            {
-                var have = gm.Inventory.Find(def);
-                gm.Inventory.AddUses(def, Mathf.Max(0, def.startingUses - (have != null ? have.uses : 0)));
-            }
-            ToastUI.Show("[Debug] 道具已補滿");
+            Inventory.InfiniteUses = !Inventory.InfiniteUses;
+            if (Inventory.InfiniteUses) gm.Inventory.RefillEmpty();
+            ToastUI.Show($"[Debug] 無限道具 {(Inventory.InfiniteUses ? "開" : "關")}");
         }
         if (kb.f2Key.wasPressedThisFrame)
         {
@@ -58,7 +55,7 @@ public class DebugTools : MonoBehaviour
     {
         if (!showHelp) return;
         GUI.Label(new Rect(10, 10, 600, 24),
-            $"[Debug] 欄位{SaveSystem.CurrentSlot + 1}  F1 補滿道具  F2 清存檔  F3 瞬移  F4 無敵({(GameManager.Instance != null && GameManager.Instance.Invincible ? "開" : "關")})  F5 自殺  F6 回標題  F12 隱藏");
+            $"[Debug] 欄位{SaveSystem.CurrentSlot + 1}  F1 無限道具({(Inventory.InfiniteUses ? "開" : "關")})  F2 清存檔  F3 瞬移  F4 無敵({(GameManager.Instance != null && GameManager.Instance.Invincible ? "開" : "關")})  F5 自殺  F6 回標題  F12 隱藏");
     }
 #endif
 }
