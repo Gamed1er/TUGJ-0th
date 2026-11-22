@@ -181,7 +181,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Battery
   explosionRadius: 4
   maxKnockback: 80
-  chainDelay: 1.5
+  chainDelay: 0.6
   explosionFx: {fileID: 3027769988156050650, guid: a63304b7d9086d1469d5caa1eb2719c9, type: 3}
   explosionSfx: {fileID: 8300000, guid: 96d6df94ad52f7443b06551bbece8c05, type: 3}
   rocketProof: 0
