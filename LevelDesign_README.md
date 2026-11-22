@@ -58,15 +58,21 @@
 
 ### 2-1. 打開 Tile Palette
 
-1. 選單 **Window → 2D → Tile Palette**。
-2. 專案裡**還沒有調色盤**，第一次要建：Tile Palette 視窗左上 **Create New Palette** → 名稱隨意 (例如 `Level`)，Grid = Rectangle → 存在 `Assets/Art/Tiles/`。
-3. 把 `Assets/Art/Tiles/` 裡的這四個 Tile 資產拖進調色盤：
+1. 選單 **Window → 2D → Tile Palette**，上方選調色盤 **`Tile Palette`** (`Assets/Tile Palette.prefab`)。
+2. 調色盤由上到下的排列：
 
-| Tile | 畫在哪個 Tilemap | 說明 |
-|---|---|---|
-| `Ground` | **Ground** | 實心方塊 (地板、牆、天花板) |
-| `SlopeLeft` / `SlopeRight` | **Ground** | 45° 斜坡，玩家和電池都能走上去 |
-| `Spike` | **Hazards** | 尖刺，碰到就死 |
+| 列 | Tile | 畫在哪個 Tilemap | 碰撞 |
+|---|---|---|---|
+| 1 | `Ground`、`SlopeLeft`、`SlopeRight`、`Spike` (舊的佔位圖) | 尖刺 → **Hazards**，其他 → **Ground** | 有 (斜坡是 45° 斜面) |
+| 2 | `floor_01` ~ `floor_11` | **Ground** | 整格實心 |
+| 3 | `wall_01` ~ `wall_03` | **Ground** | 整格實心 |
+| 4 | `ceiling_01` ~ `ceiling_05` | **Ground** | 整格實心 |
+| 5 | `BG_1` ~ `BG_3` | 裝飾 | 無 |
+| 6 | `crack_1`、`crack_2` (3x3 格大小) | 裝飾 | 無 |
+| 7 | `window` (2x2 格大小) | 裝飾 | 無 |
+| 8 | `track_1` ~ `track_3` | 裝飾 | 無 |
+
+Tile 資產在 **`Assets/Tiles/`** (佔位圖的 4 個在 `Assets/Art/Tiles/`)。要改某個 tile 有沒有碰撞，選它 → Inspector 的 **Collider Type**：Grid = 整格實心、None = 沒有碰撞。
 
 ### 2-2. 畫
 
@@ -80,20 +86,15 @@
 - 通道高度至少留 **2 格**，玩家才過得去。
 - 黑洞會「貼」在 Ground 上，所以 Ground 的形狀也決定黑洞能放哪裡。
 
-### 2-3. 換成正式美術的 tile (`floor_xx`、`ceiling_xx`…)
+### 2-3. 新增美術 tile
 
-`Assets/Art/Tiles/` 裡已經有美術的 16x16 圖，但還沒設定成可以用的 tile。每張圖要先做：
+美術新增的圖放進 `Assets/Art/Tiles/` 後：
 
-1. 在 Project 選取圖片 (可多選) → Inspector 設定：
-   - **Sprite Mode**: Single
-   - **Pixels Per Unit**: **16** (這樣 1 張圖 = 1 格)
-   - **Filter Mode**: Point (no filter)
-   - **Compression**: None
-   - 按 Apply。
-2. 把圖片拖進 Tile Palette → 它會問存在哪裡，存到 `Assets/Art/Tiles/`，會自動產生 Tile 資產。
-3. 選取剛產生的 Tile 資產，Inspector 的 **Collider Type** 設成 **Grid** (整格都是實心)。
+1. 選取圖片 → Inspector 設定：**Sprite Mode** Single、**Pixels Per Unit** **16** (16x16 的圖 = 1 格)、**Filter Mode** Point (no filter)、**Compression** None → Apply。
+2. 把圖片拖進 Tile Palette 視窗 → 存到 **`Assets/Tiles/`**。
+3. 選取產生的 Tile 資產，設定 **Collider Type** (實心 = Grid、裝飾 = None)。
 
-只是裝飾、不需要碰撞的圖 (背景 `BG_x`、裂痕 `crack_x`) 不要畫在 Ground 上，請找程式加一個「裝飾用 Tilemap」。
+⚠ 沒有碰撞的裝飾 tile (BG、crack、window、track) 目前也只能畫在 Ground Tilemap 上，會蓋住或被地形蓋住。如果需要「背景層 / 前景層」，請找程式加裝飾用的 Tilemap。
 斜坡的正式美術要另外設定碰撞形狀，也請找程式處理。
 
 ---
