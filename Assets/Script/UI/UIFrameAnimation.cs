@@ -17,6 +17,9 @@ public class UIFrameAnimation : MonoBehaviour
 
     public bool Finished => !loop && frames.Length > 0 && time >= frames.Length / fps;
 
+    /// <summary>播完一輪要幾秒 (不受 loop 影響)。</summary>
+    public float Duration => frames == null || fps <= 0f ? 0f : frames.Length / fps;
+
     void Awake() => image = GetComponent<Image>();
 
     void OnEnable() => Restart();
