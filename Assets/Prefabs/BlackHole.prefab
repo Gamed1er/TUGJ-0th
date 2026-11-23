@@ -81,7 +81,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 20
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: c2f2f972b670a434697bbe3326773d9c, type: 3}
+  m_Sprite: {fileID: 404890479203350510, guid: 1538935fbe780d641a40230a503d00d8, type: 3}
   m_Color: {r: 0.25, g: 0.05, b: 0.35, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -521,7 +521,7 @@ ParticleSystem:
         m_RotationOrder: 4
     startSizeY:
       serializedVersion: 2
-      minMaxState: 0
+      minMaxState: 3
       scalar: 1
       minScalar: 1
       maxCurve:
@@ -574,7 +574,7 @@ ParticleSystem:
         m_RotationOrder: 4
     startSizeZ:
       serializedVersion: 2
-      minMaxState: 0
+      minMaxState: 3
       scalar: 1
       minScalar: 1
       maxCurve:
@@ -5080,3 +5080,4 @@ MonoBehaviour:
   rangeIndicator: {fileID: 7532826742363311707}
   pullFx: {fileID: 5254604556798439503}
   pullFxSpeed: 2.5
+  pullSfx: {fileID: 0}

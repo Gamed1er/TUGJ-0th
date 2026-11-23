@@ -14,8 +14,10 @@ public class Lever : MonoBehaviour, IInteractable
     [SerializeField] AudioClip pullSfx;
 
     [Header("外觀 (美術可替換)")]
-    [Tooltip("拉桿的把手，拉下時左右翻轉")]
+    [Tooltip("顯示拉桿圖片的 SpriteRenderer")]
     [SerializeField] SpriteRenderer visual;
+    [SerializeField] Sprite offSprite;
+    [SerializeField] Sprite onSprite;
     [SerializeField] Color offColor = new Color(0.8f, 0.6f, 0.2f);
     [SerializeField] Color onColor = new Color(0.3f, 1f, 0.4f);
 
@@ -44,7 +46,13 @@ public class Lever : MonoBehaviour, IInteractable
     void RefreshVisual()
     {
         if (visual == null) return;
-        visual.flipX = on;
+
+        Sprite sprite = on ? onSprite : offSprite;
+        if (sprite != null)
+        {
+            visual.sprite = sprite;
+        }
+
         visual.color = on ? onColor : offColor;
     }
 
